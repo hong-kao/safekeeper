@@ -12,7 +12,7 @@ async function testLiquidationFlow() {
 
     try {
         //clean up any existing test data
-        const testAddress = '0xTEST000000000000000000000000000000000001';
+        const testAddress = '0x1234567890123456789012345678901234567890';
         await prisma.claim.deleteMany({ where: { userAddress: testAddress } }).catch(() => { });
         await prisma.policy.deleteMany({ where: { userAddress: testAddress } }).catch(() => { });
         await prisma.user.deleteMany({ where: { address: testAddress } }).catch(() => { });
@@ -33,7 +33,7 @@ async function testLiquidationFlow() {
                 leverage: 10,
                 liquidationPrice: '2850000000000000000000', //$2850
                 premiumPaid: '1500000000000000000', //1.5 eth
-                txHash: '0xtest1234567890',
+                txHash: '0x' + Date.now().toString(16) + Math.random().toString(16).slice(2),
                 status: 'ACTIVE',
             },
         });
