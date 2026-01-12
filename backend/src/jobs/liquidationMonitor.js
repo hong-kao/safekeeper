@@ -17,6 +17,22 @@ let monitorTask = null;
 export function startLiquidationMonitor(broadcastToWebSocket) {
     console.log('[MONITOR] Starting liquidation monitor...');
 
+    // Start price broadcaster (every 3s for "real-time" feel)
+    setInterval(async () => {
+        try {
+            const prices = await import('../services/hyperliquidService.js').then(m => m.getAllAssetPrices());
+            if (prices) {
+                broadcastToWebSocket('market_prices', {
+                    type: 'MARKET_PRICES',
+                    prices,
+                    timestamp: new Date().toISOString()
+                });
+            }
+        } catch (err) {
+            console.error('[MONITOR] Failed to broadcast prices:', err.message);
+        }
+    }, 3000);
+
     monitorTask = cron.schedule('*/10 * * * * *', async () => {
         if (isRunning) {
             console.log('[MONITOR] ⏳ Previous check still running, skipping...');
