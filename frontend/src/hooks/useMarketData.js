@@ -29,7 +29,7 @@ export const useMarketData = () => {
                 // User said: "TAKE THE MARKET VALUE FROM THE SIMULATED (MOCK HL) AND NOT THE REAL PIPELINE... FROM THE SIMLATED PIPELINE"
                 // This implies backend shd send it.
 
-                wsClient.on('market_prices', (data) => {
+                wsClient.on('MARKET_PRICES', (data) => {
                     setPrices(data.prices);
                 });
 

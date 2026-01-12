@@ -155,7 +155,7 @@ const InsuranceTab = () => {
                             <div className="space-y-4 animate-slide-up">
                                 <div className="p-4 bg-primary/10 border border-primary/20 rounded-xl flex justify-between items-center">
                                     <span className="text-gray-300">Estimated Premium</span>
-                                    <span className="text-xl font-bold text-white">{(parseFloat(premium) / 1e18).toFixed(4)} ETH</span>
+                                    <span className="text-xl font-bold text-white">{formatEthValue(premium)}</span>
                                 </div>
                                 <button
                                     onClick={handleBuy}

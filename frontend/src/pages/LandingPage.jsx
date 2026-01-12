@@ -25,16 +25,20 @@ const LandingPage = () => {
                             Sleep soundly with <span className="text-white font-bold">On-chain verified coverage</span> for your leveraged positions.
                         </p>
 
-                        <div className="mt-12 flex items-center justify-center gap-x-6">
+                        <div className="mt-10 flex items-center justify-center gap-6">
                             <Link
                                 to="/login"
-                                className="group relative rounded-full bg-white px-8 py-4 text-base font-bold text-black hover:scale-105 transition-all duration-200 flex items-center gap-2 shadow-[0_0_40px_-10px_rgba(255,255,255,0.3)]"
+                                className="group relative rounded-full bg-white px-8 py-3.5 text-base font-bold text-black hover:scale-105 transition-all duration-300 flex items-center gap-2 shadow-[0_0_20px_-5px_rgba(255,255,255,0.5)] hover:shadow-[0_0_30px_-5px_rgba(255,255,255,0.7)]"
                             >
                                 Get Protected Now
-                                <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
+                                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
                             </Link>
-                            <a href="#how-it-works" className="text-sm font-semibold leading-6 text-gray-300 hover:text-white transition-colors">
-                                How it works <span aria-hidden="true">→</span>
+                            <a
+                                href="#how-it-works"
+                                className="rounded-full px-8 py-3.5 text-base font-semibold text-white transition-all duration-300 bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 backdrop-blur-sm flex items-center gap-2"
+                            >
+                                How it works
+                                <span aria-hidden="true" className="group-hover:translate-x-1 transition-transform">→</span>
                             </a>
                         </div>
                     </div>
@@ -46,12 +50,14 @@ const LandingPage = () => {
                 <div className="max-w-7xl mx-auto px-6 lg:px-8">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
                         <div>
-                            <h2 className="text-3xl font-bold text-white mb-6">The Problem: Liquidation = $0</h2>
+                            <h2 className="text-4xl font-bold text-white mb-6">
+                                The Problem <span className="text-error block mt-2 text-5xl">Liquidation = $0</span>
+                            </h2>
                             <p className="text-lg text-gray-400 mb-6">
                                 When markets move violently, leveraged traders get liquidated. There is zero recovery mechanism.
                                 <br /><br />
                                 Existing insurance protocols only cover smart contract bugs. Nobody covers the real risk:
-                                <span className="text-white font-bold block mt-2 text-xl">"Did the market wreck me?"</span>
+                                <span className="text-white font-bold block mt-4 text-2xl border-l-4 border-error pl-4">"Did the market wreck me?"</span>
                             </p>
                             <div className="flex gap-4">
                                 <div className="p-4 bg-background rounded-lg border border-border">
@@ -102,32 +108,32 @@ const LandingPage = () => {
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                        <div className="p-8 rounded-3xl bg-surface border border-border hover:border-primary/50 transition-all duration-300 hover:-translate-y-2 group">
-                            <div className="h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center mb-8 group-hover:bg-primary/20 transition-colors">
+                        <div className="relative p-8 rounded-3xl transition-all duration-300 hover:bg-white/5 hover:-translate-y-1 group">
+                            <div className="h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center mb-6 group-hover:bg-primary/20 transition-colors">
                                 <Lock className="h-7 w-7 text-primary" />
                             </div>
-                            <h4 className="text-xl font-bold text-white mb-4">Transparent Payouts</h4>
-                            <p className="text-gray-400 leading-relaxed">
+                            <h4 className="text-xl font-bold text-white mb-3 group-hover:text-primary transition-colors">Transparent Payouts</h4>
+                            <p className="text-gray-400 leading-relaxed text-sm">
                                 Liquidations are verified directly on-chain. No centralized backend can deny your claim.
                             </p>
                         </div>
 
-                        <div className="p-8 rounded-3xl bg-surface border border-border hover:border-secondary/50 transition-all duration-300 hover:-translate-y-2 group">
-                            <div className="h-14 w-14 rounded-2xl bg-secondary/10 flex items-center justify-center mb-8 group-hover:bg-secondary/20 transition-colors">
+                        <div className="relative p-8 rounded-3xl transition-all duration-300 hover:bg-white/5 hover:-translate-y-1 group">
+                            <div className="h-14 w-14 rounded-2xl bg-secondary/10 flex items-center justify-center mb-6 group-hover:bg-secondary/20 transition-colors">
                                 <Activity className="h-7 w-7 text-secondary" />
                             </div>
-                            <h4 className="text-xl font-bold text-white mb-4">Dynamic ML Pricing</h4>
-                            <p className="text-gray-400 leading-relaxed">
-                                Premiums adapt in real-time based on market volatility, leverage, and pool health - powered by models trained on historical crash data.
+                            <h4 className="text-xl font-bold text-white mb-3 group-hover:text-secondary transition-colors">Dynamic Risk Pricing</h4>
+                            <p className="text-gray-400 leading-relaxed text-sm">
+                                Premiums adapt in real-time based on market volatility, leverage, and pool health.
                             </p>
                         </div>
 
-                        <div className="p-8 rounded-3xl bg-surface border border-border hover:border-accent/50 transition-all duration-300 hover:-translate-y-2 group">
-                            <div className="h-14 w-14 rounded-2xl bg-accent/10 flex items-center justify-center mb-8 group-hover:bg-accent/20 transition-colors">
+                        <div className="relative p-8 rounded-3xl transition-all duration-300 hover:bg-white/5 hover:-translate-y-1 group">
+                            <div className="h-14 w-14 rounded-2xl bg-accent/10 flex items-center justify-center mb-6 group-hover:bg-accent/20 transition-colors">
                                 <Zap className="h-7 w-7 text-accent" />
                             </div>
-                            <h4 className="text-xl font-bold text-white mb-4">Instant Settlement</h4>
-                            <p className="text-gray-400 leading-relaxed">
+                            <h4 className="text-xl font-bold text-white mb-3 group-hover:text-accent transition-colors">Instant Settlement</h4>
+                            <p className="text-gray-400 leading-relaxed text-sm">
                                 WebSocket listeners detect liquidations in sub-seconds. Smart contracts automatically settle claims directly to your wallet.
                             </p>
                         </div>

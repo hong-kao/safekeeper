@@ -141,7 +141,7 @@ const MarketTab = () => {
                             <div className="mt-auto pt-4 border-t border-border">
                                 <div className="flex justify-between items-center">
                                     <span className="text-sm text-gray-400">Premium Paid</span>
-                                    <span className="font-mono text-white">{parseFloat(activePolicy.premiumPaid || 0) / 1e18} ETH</span>
+                                    <span className="font-mono text-white">{formatEthValue(activePolicy.premiumPaid)}</span>
                                 </div>
                             </div>
                         </div>
