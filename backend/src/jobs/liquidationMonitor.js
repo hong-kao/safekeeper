@@ -129,21 +129,35 @@ async function checkAllPolicies(broadcastToWebSocket) {
  * check single policy and submit claim if liquidated
  */
 async function checkAndProcessLiquidation(policy, broadcastToWebSocket) {
+    console.log(`[MONITOR] ───────────────────────────────────────`);
+    console.log(`[MONITOR] Checking policy: ${policy.id}`);
+    console.log(`[MONITOR]   User: ${policy.userAddress.slice(0, 12)}...`);
+    console.log(`[MONITOR]   Coin: ${policy.coin || 'ETH'}`);
+    console.log(`[MONITOR]   Position: ${policy.positionSize}`);
+    console.log(`[MONITOR]   Liq Price: ${policy.liquidationPrice}`);
+
     const result = await checkHyperliquidPosition(policy.userAddress, {
         liquidationPrice: policy.liquidationPrice,
         positionSize: policy.positionSize,
+        coin: policy.coin,
     });
 
     if (result.error) {
-        console.warn(`[MONITOR] Skipping ${policy.userAddress} (API error: ${result.error})`);
+        console.warn(`[MONITOR] ⚠️ Skipping ${policy.userAddress} (API error: ${result.error})`);
         return;
     }
 
     if (!result.isLiquidated) {
-        return; //position is safe
+        return; //position is safe, logging handled in hyperliquidService
     }
 
-    console.log(`[MONITOR] 🔴 LIQUIDATION DETECTED: ${policy.userAddress}`);
+    console.log(``);
+    console.log(`[MONITOR] 🔴🔴🔴 LIQUIDATION TRIGGERED 🔴🔴🔴`);
+    console.log(`[MONITOR]   Policy ID: ${policy.id}`);
+    console.log(`[MONITOR]   User: ${policy.userAddress}`);
+    console.log(`[MONITOR]   Current Price: $${result.currentPrice?.toFixed(2)}`);
+    console.log(`[MONITOR]   Liq Price: ${policy.liquidationPrice}`);
+    console.log(``);
 
     //check if claim already exists
     const existingClaim = await prisma.claim.findUnique({
@@ -151,8 +165,21 @@ async function checkAndProcessLiquidation(policy, broadcastToWebSocket) {
     });
 
     if (existingClaim) {
-        console.log(`[MONITOR] Claim already exists for policy ${policy.id}, skipping`);
-        return;
+        // If claim already succeeded (PAID), skip
+        if (existingClaim.status === 'PAID') {
+            console.log(`[MONITOR] Claim already PAID for policy ${policy.id}, skipping`);
+            return;
+        }
+
+        // If claim FAILED, delete it and retry
+        if (existingClaim.status === 'FAILED') {
+            console.log(`[MONITOR] Previous claim FAILED for policy ${policy.id}, retrying...`);
+            await prisma.claim.delete({ where: { id: existingClaim.id } });
+        } else {
+            // PENDING status - still processing, skip
+            console.log(`[MONITOR] Claim ${existingClaim.status} for policy ${policy.id}, skipping`);
+            return;
+        }
     }
 
     //broadcast liquidation detected
@@ -167,6 +194,11 @@ async function checkAndProcessLiquidation(policy, broadcastToWebSocket) {
     //calculate payout (50% coverage)
     const payoutAmount = calculatePayout(policy.positionSize);
 
+    console.log(`[CLAIM] Creating claim in database...`);
+    console.log(`[CLAIM]   Policy ID: ${policy.id}`);
+    console.log(`[CLAIM]   Loss Amount: ${policy.positionSize}`);
+    console.log(`[CLAIM]   Payout (50%): ${payoutAmount}`);
+
     //create claim in db
     const claim = await prisma.claim.create({
         data: {
@@ -178,7 +210,8 @@ async function checkAndProcessLiquidation(policy, broadcastToWebSocket) {
         },
     });
 
-    console.log(`[MONITOR] 💾 Claim created: ${claim.id}`);
+    console.log(`[CLAIM] ✅ Claim created: ${claim.id}`);
+    console.log(`[CLAIM] DB Row:`, JSON.stringify(claim, null, 2));
 
     //broadcast claim submitted
     broadcastToWebSocket('claims', {
@@ -191,9 +224,21 @@ async function checkAndProcessLiquidation(policy, broadcastToWebSocket) {
 
     try {
         //submit claim on-chain
-        const txResult = await submitClaimOnChain(policy.userAddress, claim.lossAmount);
+        console.log(`[CLAIM] Submitting claim on-chain...`);
+        console.log(`[CLAIM]   User: ${policy.userAddress}`);
+        console.log(`[CLAIM]   Policy Index: 0 (first active policy)`);
+        console.log(`[CLAIM]   Loss Amount: ${claim.lossAmount}`);
+
+        // Pass policyIndex=0 (assuming user's first/only active policy)
+        const txResult = await submitClaimOnChain(policy.userAddress, 0, claim.lossAmount);
+
+        console.log(`[CLAIM] ✅ On-chain TX submitted!`);
+        console.log(`[CLAIM]   TX Hash: ${txResult.txHash}`);
+        console.log(`[CLAIM]   Block: ${txResult.blockNumber}`);
+        console.log(`[CLAIM]   Gas Used: ${txResult.gasUsed}`);
 
         //update claim with tx
+        console.log(`[CLAIM] Updating claim status in DB → PAID`);
         await prisma.claim.update({
             where: { id: claim.id },
             data: {
@@ -204,12 +249,18 @@ async function checkAndProcessLiquidation(policy, broadcastToWebSocket) {
         });
 
         //mark policy as claimed
+        console.log(`[CLAIM] Updating policy status in DB → CLAIMED`);
         await prisma.policy.update({
             where: { id: policy.id },
             data: { status: 'CLAIMED' },
         });
 
-        console.log(`[MONITOR] ✅ Claim paid: ${txResult.txHash}`);
+        console.log(`[CLAIM] ═══════════════════════════════════════════`);
+        console.log(`[CLAIM] ✅✅✅ PAYOUT COMPLETE ✅✅✅`);
+        console.log(`[CLAIM]   Recipient: ${policy.userAddress}`);
+        console.log(`[CLAIM]   Amount: ${claim.payoutAmount}`);
+        console.log(`[CLAIM]   TX: ${txResult.txHash}`);
+        console.log(`[CLAIM] ═══════════════════════════════════════════`);
 
         //broadcast claim paid
         broadcastToWebSocket('claims', {

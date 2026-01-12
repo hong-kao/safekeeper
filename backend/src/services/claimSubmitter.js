@@ -6,10 +6,11 @@ import { INSURANCE_POOL_ABI, CONTRACTS } from '../config/contractABIs.js';
 /**
  * submit a claim to insurancepool contract
  * @param {string} userAddress - user who should receive payout
+ * @param {number} policyIndex - on-chain policy index (0-based)
  * @param {string} lossAmount - loss amount (in wei)
  * @returns {Promise<object>} { txHash, blockNumber, gasUsed }
  */
-export async function submitClaimOnChain(userAddress, lossAmount) {
+export async function submitClaimOnChain(userAddress, policyIndex, lossAmount) {
     // Check MOCK_MODE at runtime (not module load time)
     const MOCK_MODE = process.env.MOCK_WEB3 === 'true';
     console.log(`[CLAIM] MOCK_WEB3 env: ${process.env.MOCK_WEB3}, MOCK_MODE: ${MOCK_MODE}`);
@@ -20,6 +21,7 @@ export async function submitClaimOnChain(userAddress, lossAmount) {
 
     try {
         console.log(`[CLAIM] Submitting claim for ${userAddress}`);
+        console.log(`[CLAIM] Policy Index: ${policyIndex}`);
         console.log(`[CLAIM] Loss amount: ${lossAmount} wei`);
         console.log(`[CLAIM] Pool address: ${CONTRACTS.insurancePool}`);
 
@@ -32,12 +34,12 @@ export async function submitClaimOnChain(userAddress, lossAmount) {
             throw new Error('Loss amount must be > 0');
         }
 
-        //call submitClaim on contract
+        //call submitClaim on contract with policyIndex
         const txHash = await walletClient.writeContract({
             address: CONTRACTS.insurancePool,
             abi: INSURANCE_POOL_ABI,
             functionName: 'submitClaim',
-            args: [userAddress, BigInt(lossAmount)],
+            args: [userAddress, BigInt(policyIndex), BigInt(lossAmount)],
         });
 
         console.log(`[CLAIM] ✅ TX submitted: ${txHash}`);

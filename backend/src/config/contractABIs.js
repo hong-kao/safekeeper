@@ -19,6 +19,7 @@ export const INSURANCE_POOL_ABI = [
         type: 'function',
         inputs: [
             { name: 'user', type: 'address' },
+            { name: 'policyIndex', type: 'uint256' },
             { name: 'lossAmount', type: 'uint256' },
         ],
         outputs: [],

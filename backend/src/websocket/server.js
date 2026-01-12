@@ -35,6 +35,18 @@ export function startWebSocketServer(httpServer) {
 export function broadcast(channel, data) {
     if (!wss) return;
 
+    const clientCount = [...wss.clients].filter(c => c.readyState === 1).length;
+
+    // Log significant events (not price updates to avoid spam)
+    if (data.type !== 'MARKET_PRICES' && data.type !== 'POOL_UPDATED') {
+        console.log(`[WS] ═══════════════════════════════════════════`);
+        console.log(`[WS] Broadcasting to ${clientCount} clients`);
+        console.log(`[WS]   Channel: ${channel}`);
+        console.log(`[WS]   Event Type: ${data.type}`);
+        console.log(`[WS]   Payload:`, JSON.stringify(data, null, 2));
+        console.log(`[WS] ═══════════════════════════════════════════`);
+    }
+
     const message = JSON.stringify({ channel, ...data });
 
     wss.clients.forEach((client) => {
