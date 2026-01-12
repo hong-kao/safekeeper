@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { apiClient } from '../services/api';
-import { publicClient, walletClient, CONTRACTS, INSURANCE_POOL_ABI, PRICING_ABI } from '../services/viem';
+import { publicClient, walletClient, initWalletClient, switchToCorrectChain, CONTRACTS, INSURANCE_POOL_ABI, PRICING_ABI } from '../services/viem';
 
 export const useInsurance = (userAddress) => {
     const [loading, setLoading] = useState(false);
@@ -53,14 +53,29 @@ export const useInsurance = (userAddress) => {
         setError(null);
 
         try {
+            // Ensure wallet is on the correct chain before transaction
+            const switched = await switchToCorrectChain();
+            if (!switched) {
+                throw new Error('Please switch to the correct network in your wallet');
+            }
+
+            // Re-initialize wallet client after chain switch
+            await initWalletClient();
+
             const [account] = await walletClient.getAddresses();
+
+            // Convert decimal ETH values to Wei (BigInt) - positionSize/liquidationPrice are in ETH
+            const positionSizeWei = BigInt(Math.floor(parseFloat(positionSize) * 1e18));
+            const leverageBigInt = BigInt(Math.floor(parseFloat(leverage)));
+            const liqPriceWei = BigInt(Math.floor(parseFloat(liquidationPrice) * 1e18));
+            const premiumWei = BigInt(Math.floor(parseFloat(premiumAmount) * 1e18));
 
             const txHash = await walletClient.writeContract({
                 address: CONTRACTS.insurancePool,
                 abi: INSURANCE_POOL_ABI,
                 functionName: 'buyInsurance',
-                args: [BigInt(positionSize), BigInt(leverage), BigInt(liquidationPrice)],
-                value: BigInt(premiumAmount),
+                args: [positionSizeWei, leverageBigInt, liqPriceWei],
+                value: premiumWei,
                 account,
             });
 

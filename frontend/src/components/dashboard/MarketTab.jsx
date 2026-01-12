@@ -5,6 +5,7 @@ import { useInsurance } from '../../hooks/useInsurance';
 import { TrendingUp, TrendingDown, Shield, AlertTriangle, CheckCircle } from 'lucide-react';
 import Loader from '../shared/Loader';
 import GSAPLoader from '../shared/GSAPLoader';
+import { formatEthValue } from '../../utils/format';
 
 const MarketTab = () => {
     const { address } = useAuth();

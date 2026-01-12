@@ -8,7 +8,7 @@ dotenv.config();
 
 //get tenderly rpc url (prioritize TENDERLY_RPC_URL, fallback to RPC_URL)
 const rpcUrl = process.env.TENDERLY_RPC_URL || process.env.RPC_URL || 'http://127.0.0.1:8545';
-const chainId = parseInt(process.env.TENDERLY_CHAIN_ID || process.env.CHAIN_ID || '31337');
+const chainId = parseInt(process.env.TENDERLY_CHAIN_ID || process.env.CHAIN_ID || '73571');
 
 //define tenderly virtual testnet chain
 const tenderlyChain = defineChain({

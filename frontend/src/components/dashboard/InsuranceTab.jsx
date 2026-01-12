@@ -3,6 +3,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { useInsurance } from '../../hooks/useInsurance';
 import { Shield, AlertTriangle, Calculator, Check } from 'lucide-react';
 import Loader from '../shared/Loader';
+import { formatEthValue } from '../../utils/format';
 
 const InsuranceTab = () => {
     const { address } = useAuth();

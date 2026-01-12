@@ -1,16 +1,69 @@
-import { createPublicClient, createWalletClient, http, custom } from 'viem';
+import { createPublicClient, createWalletClient, http, custom, defineChain } from 'viem';
 import { hardhat, arbitrumSepolia } from 'viem/chains';
 
 const rpcUrl = import.meta.env.VITE_RPC_URL || 'http://127.0.0.1:8545';
 const chainId = parseInt(import.meta.env.VITE_CHAIN_ID || '31337');
 
-//use hardhat for local, arbitrumSepolia for testnet
-const chain = chainId === 31337 ? hardhat : arbitrumSepolia;
+// Define chain based on environment
+let chain;
+if (chainId === 31337) {
+    chain = hardhat;
+} else if (chainId === 421614) {
+    chain = arbitrumSepolia;
+} else {
+    // Custom chain (e.g., Tenderly Virtual TestNet)
+    chain = defineChain({
+        id: chainId,
+        name: import.meta.env.VITE_CHAIN_NAME || 'Tenderly Virtual TestNet',
+        nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
+        rpcUrls: {
+            default: { http: [rpcUrl] },
+        },
+    });
+}
 
 export const publicClient = createPublicClient({
     chain,
     transport: http(rpcUrl),
 });
+
+// Export chain info for switching
+export const targetChain = chain;
+export const targetChainId = chainId;
+
+// Helper function to switch wallet to correct chain
+export const switchToCorrectChain = async () => {
+    if (typeof window === 'undefined' || !window.ethereum) return false;
+
+    try {
+        await window.ethereum.request({
+            method: 'wallet_switchEthereumChain',
+            params: [{ chainId: `0x${chainId.toString(16)}` }],
+        });
+        return true;
+    } catch (switchError) {
+        // Chain doesn't exist, try to add it
+        if (switchError.code === 4902) {
+            try {
+                await window.ethereum.request({
+                    method: 'wallet_addEthereumChain',
+                    params: [{
+                        chainId: `0x${chainId.toString(16)}`,
+                        chainName: chain.name || 'Tenderly Virtual TestNet',
+                        nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
+                        rpcUrls: [rpcUrl],
+                    }],
+                });
+                return true;
+            } catch (addError) {
+                console.error('Failed to add chain:', addError);
+                return false;
+            }
+        }
+        console.error('Failed to switch chain:', switchError);
+        return false;
+    }
+};
 
 export let walletClient = null;
 
