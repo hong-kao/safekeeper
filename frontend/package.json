@@ -1,0 +1,25 @@
+{
+  "name": "safekeeper-frontend",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "viem": "^2.21.0",
+    "wagmi": "^2.12.0",
+    "@wagmi/connectors": "^5.0.0",
+    "@wagmi/core": "^2.13.0",
+    "axios": "^1.7.7",
+    "@tanstack/react-query": "^5.59.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.3",
+    "vite": "^5.4.0"
+  }
+}
