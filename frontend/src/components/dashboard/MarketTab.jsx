@@ -4,6 +4,7 @@ import { useMarketData } from '../../hooks/useMarketData';
 import { useInsurance } from '../../hooks/useInsurance';
 import { TrendingUp, TrendingDown, Shield, AlertTriangle, CheckCircle } from 'lucide-react';
 import Loader from '../shared/Loader';
+import GSAPLoader from '../shared/GSAPLoader';
 
 const MarketTab = () => {
     const { address } = useAuth();
@@ -14,6 +15,14 @@ const MarketTab = () => {
     const [loading, setLoading] = useState(true);
     const [selectedAsset, setSelectedAsset] = useState('ETH');
     const [showLiquidationModal, setShowLiquidationModal] = useState(false);
+    const [initialLoading, setInitialLoading] = useState(true);
+
+    useEffect(() => {
+        // Force show GSAP loader for 2.5 seconds on mount/asset change for effect
+        setInitialLoading(true);
+        const timer = setTimeout(() => setInitialLoading(false), 2500);
+        return () => clearTimeout(timer);
+    }, [selectedAsset]);
 
     useEffect(() => {
         const fetchPolicies = async () => {
@@ -96,8 +105,12 @@ const MarketTab = () => {
                         <TrendingUp className="h-64 w-64" />
                     </div>
                     <h3 className="text-gray-400 mb-2 font-medium">Index Price ({selectedAsset})</h3>
-                    <div className="text-6xl font-extrabold text-white tracking-tighter mb-4">
-                        ${currentPrice?.toFixed(2) || '0.00'}
+                    <div className="text-6xl font-extrabold text-white tracking-tighter mb-4 h-20 flex items-center justify-center">
+                        {initialLoading ? (
+                            <GSAPLoader />
+                        ) : (
+                            <span>${currentPrice?.toFixed(2) || '0.00'}</span>
+                        )}
                     </div>
                     <div className="flex items-center gap-2 text-success bg-success/10 px-3 py-1 rounded-full text-sm">
                         <TrendingUp className="h-4 w-4" />
