@@ -9,6 +9,55 @@ const MOCK_MODE = process.env.MOCK_HYPERLIQUID === 'true';
 
 console.log(`[HL] Hyperliquid service initialized (${MOCK_MODE ? 'MOCK' : 'REAL'} mode)`);
 
+//============= MOCK PRICE STATE (must be at top for use by all functions) =============
+// Simulated market prices - shared between all mock functions for price consistency
+const mockMarketPrices = new Map();
+const MOCK_PRICE_VOLATILITY = 0.005; // 0.5% price movement per check
+
+// Track calls for demo crash timing
+const priceCallCount = new Map();
+
+/**
+ * Get or initialize mock market price for a coin
+ */
+function getMockMarketPrice(coin = 'ETH', basePrice = 3000) {
+    if (!mockMarketPrices.has(coin)) {
+        mockMarketPrices.set(coin, basePrice);
+    }
+    return mockMarketPrices.get(coin);
+}
+
+/**
+ * Simulate price movement (random walk with demo crash)
+ */
+function simulatePriceMovement(coin = 'ETH', basePrice = 3000) {
+    let currentPrice = getMockMarketPrice(coin, basePrice);
+
+    // Track calls per coin for demo crash timing
+    const count = (priceCallCount.get(coin) || 0) + 1;
+    priceCallCount.set(coin, count);
+
+    // DEMO MODE: Force crash after 5-10 calls (within ~30-60 seconds)
+    let movement;
+    if (count > 5 && count < 20) {
+        // Strong downward bias during crash window
+        movement = -0.02 - (Math.random() * 0.02); // -2% to -4% per check
+        console.log(`[MOCK] 📉 Demo crash in progress (call ${count})`);
+    } else if (count >= 20) {
+        // Reset for next demo
+        priceCallCount.set(coin, 0);
+        movement = (Math.random() - 0.5) * 2 * MOCK_PRICE_VOLATILITY;
+    } else {
+        // Normal random walk before crash
+        movement = (Math.random() - 0.5) * 2 * MOCK_PRICE_VOLATILITY;
+    }
+
+    currentPrice = currentPrice * (1 + movement);
+    mockMarketPrices.set(coin, currentPrice);
+    return currentPrice;
+}
+//========================================================================================
+
 /**
  * check if a user's position on hyperliquid is liquidated
  * @param {string} userAddress - user's hyperliquid wallet address
@@ -153,12 +202,17 @@ async function getMarkPrice(coin) {
 
 /**
  * get all asset prices from hyperliquid
+ * IMPORTANT: In mock mode, uses the same mockMarketPrices map as simulatePriceMovement
+ * so frontend and liquidation monitor see the SAME prices
  */
 export async function getAllAssetPrices() {
     if (MOCK_MODE) {
+        // Use the same mockMarketPrices map that simulatePriceMovement uses
+        // This ensures frontend and backend are in sync
         return {
-            ETH: 3000 + Math.random() * 100,
-            BTC: 45000 + Math.random() * 1000,
+            ETH: getMockMarketPrice('ETH', 3000),
+            BTC: getMockMarketPrice('BTC', 45000),
+            SOL: getMockMarketPrice('SOL', 100),
         };
     }
 
@@ -276,35 +330,7 @@ export async function getUserFills(userAddress) {
     }
 }
 
-//=== MOCK FUNCTIONS FOR DEMO ===
-
-//simulated market prices (persisted between calls)
-const mockMarketPrices = new Map();
-const MOCK_PRICE_VOLATILITY = 0.02; //2% price movement per check
-
-/**
- * get or initialize mock market price for a coin
- */
-function getMockMarketPrice(coin = 'ETH', basePrice = 3000) {
-    if (!mockMarketPrices.has(coin)) {
-        mockMarketPrices.set(coin, basePrice);
-    }
-    return mockMarketPrices.get(coin);
-}
-
-/**
- * simulate price movement (random walk)
- */
-function simulatePriceMovement(coin = 'ETH', basePrice = 3000) {
-    let currentPrice = getMockMarketPrice(coin, basePrice);
-
-    //random walk: -2% to +2% per check
-    const movement = (Math.random() - 0.5) * 2 * MOCK_PRICE_VOLATILITY;
-    currentPrice = currentPrice * (1 + movement);
-
-    mockMarketPrices.set(coin, currentPrice);
-    return currentPrice;
-}
+//=== MOCK UTILITY FUNCTIONS FOR DEMO ===
 
 /**
  * force a price crash for demo (call this to trigger liquidation)

@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react';
 import { WebSocketClient } from '../services/websocket';
 import { apiClient } from '../services/api';
 
-// Singleton WS client
-const wsClient = new WebSocketClient(import.meta.env.VITE_WS_URL || 'ws://localhost:8080');
+// Singleton WS client - connect to backend port 4000
+const wsClient = new WebSocketClient(import.meta.env.VITE_WS_URL || 'ws://localhost:4000');
 
 export const useMarketData = () => {
     const [prices, setPrices] = useState({ ETH: 0, BTC: 0, SOL: 0 });

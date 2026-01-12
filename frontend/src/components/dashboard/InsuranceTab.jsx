@@ -1,13 +1,25 @@
 import { useState, useEffect } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { useInsurance } from '../../hooks/useInsurance';
-import { Shield, AlertTriangle, Calculator, Check } from 'lucide-react';
+import { Shield, AlertTriangle, Calculator, Check, ArrowRight, Eye } from 'lucide-react';
 import Loader from '../shared/Loader';
 import { formatEthValue } from '../../utils/format';
+import { formatEther } from 'viem';
+
+// Helper to format Wei to ETH
+const formatWei = (wei) => {
+    try {
+        return parseFloat(formatEther(BigInt(wei))).toFixed(4);
+    } catch {
+        return '0.0000';
+    }
+};
 
 const InsuranceTab = () => {
     const { address } = useAuth();
-    const { getQuote, buyInsurance, loading: txLoading, error: txError } = useInsurance(address);
+    const navigate = useNavigate();
+    const { getQuote, buyInsurance, getPolicies, loading: txLoading, error: txError } = useInsurance(address);
 
     const [form, setForm] = useState({
         asset: 'ETH',
@@ -19,6 +31,35 @@ const InsuranceTab = () => {
     const [premium, setPremium] = useState(null);
     const [calculating, setCalculating] = useState(false);
     const [successMsg, setSuccessMsg] = useState('');
+    const [activePolicy, setActivePolicy] = useState(null);
+    const [checkingPolicy, setCheckingPolicy] = useState(true);
+
+    // Check for existing active policy on mount
+    useEffect(() => {
+        const checkActivePolicy = async () => {
+            if (address) {
+                console.log('[InsuranceTab] Checking for active policies...');
+                setCheckingPolicy(true);
+                const policies = await getPolicies();
+                console.log('[InsuranceTab] Policies:', policies);
+
+                // Find active ETH policy
+                const active = Array.isArray(policies)
+                    ? policies.find(p => p.status === 'ACTIVE' && p.coin === 'ETH')
+                    : null;
+
+                if (active) {
+                    console.log('[InsuranceTab] Found active policy:', active.id);
+                    setActivePolicy(active);
+                } else {
+                    console.log('[InsuranceTab] No active ETH policy found');
+                    setActivePolicy(null);
+                }
+                setCheckingPolicy(false);
+            }
+        };
+        checkActivePolicy();
+    }, [address, getPolicies]);
 
     // Handle Input Change
     const handleChange = (e) => {
@@ -30,8 +71,6 @@ const InsuranceTab = () => {
     const handleCalculate = async () => {
         if (!form.positionSize || !form.leverage) return;
         setCalculating(true);
-        // Simulate calculation delay or fetch from contract if needed
-        // For now, using the getQuote hook which calls backend API or contract
         const quote = await getQuote(form.positionSize, form.leverage);
         if (quote) {
             setPremium(quote.premium);
@@ -43,9 +82,7 @@ const InsuranceTab = () => {
     const handleBuy = async () => {
         if (!premium) return;
 
-        // Convert to wei/contract format if needed happens in hook?
-        // useInsurance.buyInsurance expects: positionSize, leverage, liquidationPrice, premiumAmount
-
+        console.log('[InsuranceTab] Buying insurance...');
         const result = await buyInsurance(
             form.positionSize,
             form.leverage,
@@ -54,11 +91,88 @@ const InsuranceTab = () => {
         );
 
         if (result && result.txHash) {
+            console.log('[InsuranceTab] Purchase successful! TX:', result.txHash);
             setSuccessMsg(`Insurance Purchased! TX: ${result.txHash.slice(0, 10)}...`);
             setForm({ asset: 'ETH', positionSize: '', leverage: '', liquidationPrice: '' });
             setPremium(null);
+
+            // Redirect to Market tab after 2 seconds
+            setTimeout(() => {
+                navigate('/dashboard/market');
+            }, 2000);
         }
     };
+
+    // Loading state
+    if (checkingPolicy) {
+        return (
+            <div className="flex h-96 items-center justify-center">
+                <Loader className="h-12 w-12 text-primary" />
+            </div>
+        );
+    }
+
+    // Already Protected State
+    if (activePolicy) {
+        return (
+            <div className="max-w-2xl mx-auto">
+                <div className="bg-surface border border-primary/30 rounded-2xl p-8 text-center">
+                    <div className="h-20 w-20 bg-primary/20 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <Shield className="h-10 w-10 text-primary" />
+                    </div>
+                    <h2 className="text-2xl font-bold text-white mb-2">You're Already Protected!</h2>
+                    <p className="text-gray-400 mb-6">You have an active insurance policy for ETH.</p>
+
+                    <div className="bg-background rounded-xl p-6 border border-border mb-6 text-left">
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <div className="text-xs text-gray-400 mb-1">Position Size</div>
+                                <div className="font-bold text-white">{formatWei(activePolicy.positionSize)} ETH</div>
+                            </div>
+                            <div>
+                                <div className="text-xs text-gray-400 mb-1">Leverage</div>
+                                <div className="font-bold text-white">{activePolicy.leverage}x</div>
+                            </div>
+                            <div>
+                                <div className="text-xs text-gray-400 mb-1">Liquidation Price</div>
+                                <div className="font-bold text-error">${formatWei(activePolicy.liquidationPrice)}</div>
+                            </div>
+                            <div>
+                                <div className="text-xs text-gray-400 mb-1">Coverage</div>
+                                <div className="font-bold text-success">50%</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <Link
+                        to="/dashboard/market"
+                        className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-white font-bold rounded-xl hover:bg-primary/90 transition-colors"
+                    >
+                        <Eye className="h-5 w-5" />
+                        View Position in Market
+                        <ArrowRight className="h-4 w-4" />
+                    </Link>
+                </div>
+            </div>
+        );
+    }
+
+    // Success State (after purchase)
+    if (successMsg) {
+        return (
+            <div className="max-w-2xl mx-auto">
+                <div className="bg-surface border border-success/30 rounded-2xl p-8 text-center">
+                    <div className="h-20 w-20 bg-success/20 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <Check className="h-10 w-10 text-success" />
+                    </div>
+                    <h2 className="text-2xl font-bold text-white mb-2">Purchase Successful!</h2>
+                    <p className="text-success mb-6">{successMsg}</p>
+                    <p className="text-gray-400 text-sm">Redirecting to Market tab...</p>
+                    <Loader className="h-6 w-6 text-primary mx-auto mt-4" />
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="max-w-4xl mx-auto space-y-8">
@@ -133,13 +247,6 @@ const InsuranceTab = () => {
                         {txError && (
                             <div className="p-3 bg-error/10 border border-error/20 rounded-lg text-sm text-error">
                                 {txError}
-                            </div>
-                        )}
-
-                        {successMsg && (
-                            <div className="p-3 bg-success/10 border border-success/20 rounded-lg text-sm text-success flex items-center gap-2">
-                                <Check className="h-4 w-4" />
-                                {successMsg}
                             </div>
                         )}
 

@@ -3,8 +3,6 @@
 import { walletClient, publicClient } from '../config/viem.js';
 import { INSURANCE_POOL_ABI, CONTRACTS } from '../config/contractABIs.js';
 
-const MOCK_MODE = process.env.MOCK_WEB3 === 'true';
-
 /**
  * submit a claim to insurancepool contract
  * @param {string} userAddress - user who should receive payout
@@ -12,6 +10,10 @@ const MOCK_MODE = process.env.MOCK_WEB3 === 'true';
  * @returns {Promise<object>} { txHash, blockNumber, gasUsed }
  */
 export async function submitClaimOnChain(userAddress, lossAmount) {
+    // Check MOCK_MODE at runtime (not module load time)
+    const MOCK_MODE = process.env.MOCK_WEB3 === 'true';
+    console.log(`[CLAIM] MOCK_WEB3 env: ${process.env.MOCK_WEB3}, MOCK_MODE: ${MOCK_MODE}`);
+
     if (MOCK_MODE) {
         return mockClaimSubmission(userAddress, lossAmount);
     }
@@ -80,6 +82,7 @@ function mockClaimSubmission(userAddress, lossAmount) {
  * get current pool status from contract
  */
 export async function getPoolStatus() {
+    const MOCK_MODE = process.env.MOCK_WEB3 === 'true';
     if (MOCK_MODE) {
         return {
             poolBalance: '50000000000000000000',
@@ -113,6 +116,7 @@ export async function getPoolStatus() {
  * check if pool is paused
  */
 export async function isPoolPaused() {
+    const MOCK_MODE = process.env.MOCK_WEB3 === 'true';
     if (MOCK_MODE) return false;
 
     try {

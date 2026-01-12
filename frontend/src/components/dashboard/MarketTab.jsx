@@ -1,11 +1,33 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { useMarketData } from '../../hooks/useMarketData';
 import { useInsurance } from '../../hooks/useInsurance';
-import { TrendingUp, TrendingDown, Shield, AlertTriangle, CheckCircle } from 'lucide-react';
+import { TrendingUp, Shield, AlertTriangle, CheckCircle } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import Loader from '../shared/Loader';
 import GSAPLoader from '../shared/GSAPLoader';
 import { formatEthValue } from '../../utils/format';
+import { formatEther } from 'viem';
+
+// Helper to format Wei to ETH
+const formatWei = (wei) => {
+    try {
+        if (!wei) return '0.0000';
+        return parseFloat(formatEther(BigInt(wei))).toFixed(4);
+    } catch {
+        return '0.0000';
+    }
+};
+
+// Helper to format Wei to USD (assuming value is already in USD-like format but in Wei)
+const formatWeiToUsd = (wei) => {
+    try {
+        if (!wei) return '0.00';
+        return parseFloat(formatEther(BigInt(wei))).toFixed(2);
+    } catch {
+        return '0.00';
+    }
+};
 
 const MarketTab = () => {
     const { address } = useAuth();
@@ -18,6 +40,9 @@ const MarketTab = () => {
     const [showLiquidationModal, setShowLiquidationModal] = useState(false);
     const [initialLoading, setInitialLoading] = useState(true);
 
+    // Track if user has dismissed the modal for this policy
+    const dismissedPolicyRef = useRef(null);
+
     useEffect(() => {
         // Force show GSAP loader for 2.5 seconds on mount/asset change for effect
         setInitialLoading(true);
@@ -28,35 +53,53 @@ const MarketTab = () => {
     useEffect(() => {
         const fetchPolicies = async () => {
             if (address) {
+                console.log('[MarketTab] Fetching policies for:', address);
                 const data = await getPolicies();
-                setPolicies(data?.policies || []);
+                console.log('[MarketTab] API Response:', data);
+                // API returns array directly, not { policies: [...] }
+                setPolicies(Array.isArray(data) ? data : []);
                 setLoading(false);
             }
         };
         fetchPolicies();
+
+        // Refetch every 5 seconds to catch status updates
+        const interval = setInterval(fetchPolicies, 5000);
+        return () => clearInterval(interval);
     }, [address, getPolicies]);
 
     // Find active policy for selected asset
     const activePolicy = policies.find(p => p.coin === selectedAsset && p.status === 'ACTIVE');
     const currentPrice = prices[selectedAsset];
 
-    // Liquidation Check Logic
+    // Liquidation Check Logic - only show modal if not already dismissed for this policy
     useEffect(() => {
         if (activePolicy && currentPrice) {
-            const liqPrice = parseFloat(activePolicy.liquidationPrice);
-            // Default to Long logic for now: Liquidated if Price <= Liq Price
-            if (currentPrice <= liqPrice) {
+            // Convert liquidation price from Wei to normal number
+            const liqPriceWei = BigInt(activePolicy.liquidationPrice);
+            const liqPrice = parseFloat(formatEther(liqPriceWei));
+
+            // Check if liquidated and modal not already dismissed for this policy
+            if (currentPrice <= liqPrice && dismissedPolicyRef.current !== activePolicy.id) {
                 setShowLiquidationModal(true);
             }
         }
     }, [activePolicy, currentPrice]);
 
-    // Calculate Risk Metrics
+    // Handle modal dismiss
+    const handleDismissModal = () => {
+        if (activePolicy) {
+            dismissedPolicyRef.current = activePolicy.id;
+        }
+        setShowLiquidationModal(false);
+    };
+
+    // Calculate Risk Metrics (using converted values)
     const getRiskStatus = () => {
         if (!activePolicy) return { status: 'NO_INSURANCE', color: 'text-gray-400', bg: 'bg-gray-500/10' };
         if (!currentPrice) return { status: 'LOADING', color: 'text-gray-400', bg: 'bg-gray-500/10' };
 
-        const liqPrice = parseFloat(activePolicy.liquidationPrice);
+        const liqPrice = parseFloat(formatEther(BigInt(activePolicy.liquidationPrice)));
         const diff = ((currentPrice - liqPrice) / liqPrice) * 100;
 
         if (currentPrice <= liqPrice) return { status: 'LIQUIDATED', color: 'text-error', bg: 'bg-error/10' };
@@ -66,6 +109,10 @@ const MarketTab = () => {
     };
 
     const risk = getRiskStatus();
+
+    // Get converted values for display
+    const positionSizeEth = activePolicy ? formatWei(activePolicy.positionSize) : '0';
+    const liqPriceUsd = activePolicy ? formatWeiToUsd(activePolicy.liquidationPrice) : '0';
 
     if (loading) {
         return (
@@ -136,7 +183,7 @@ const MarketTab = () => {
                                 <div className="w-full bg-gray-700 h-2 rounded-full overflow-hidden">
                                     <div
                                         className={`h-full transition-all duration-500 ${risk.color.replace('text-', 'bg-')}`}
-                                        style={{ width: `${Math.max(0, Math.min(100, ((currentPrice - activePolicy.liquidationPrice / 1.2) / (activePolicy.liquidationPrice * 0.2)) * 100))}%` }} // Rough visual representation
+                                        style={{ width: `${Math.max(0, Math.min(100, ((currentPrice - parseFloat(liqPriceUsd)) / parseFloat(liqPriceUsd) * 100 + 20) * 2))}%` }}
                                     />
                                 </div>
                             </div>
@@ -144,18 +191,18 @@ const MarketTab = () => {
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="p-3 bg-background rounded-lg border border-border">
                                     <div className="text-xs text-gray-400 mb-1">Liquidation Price</div>
-                                    <div className="font-mono font-bold text-error">${activePolicy.liquidationPrice}</div>
+                                    <div className="font-mono font-bold text-error">${liqPriceUsd}</div>
                                 </div>
                                 <div className="p-3 bg-background rounded-lg border border-border">
                                     <div className="text-xs text-gray-400 mb-1">Coverage</div>
-                                    <div className="font-mono font-bold text-primary">{activePolicy.positionSize} {activePolicy.coin}</div>
+                                    <div className="font-mono font-bold text-primary">{positionSizeEth} ETH</div>
                                 </div>
                             </div>
 
                             <div className="mt-auto pt-4 border-t border-border">
                                 <div className="flex justify-between items-center">
                                     <span className="text-sm text-gray-400">Premium Paid</span>
-                                    <span className="font-mono text-white">{formatEthValue(activePolicy.premiumPaid)}</span>
+                                    <span className="font-mono text-white">{formatWei(activePolicy.premiumPaid)} ETH</span>
                                 </div>
                             </div>
                         </div>
@@ -168,9 +215,12 @@ const MarketTab = () => {
                                 <h4 className="font-bold text-white">No Active Protection</h4>
                                 <p className="text-sm text-gray-400 mt-2">You are trading naked! Buy insurance to protect your {selectedAsset} position.</p>
                             </div>
-                            <button className="btn btn-primary bg-primary text-white px-6 py-2 rounded-lg font-bold hover:bg-primary/90 transition-colors w-full">
+                            <Link
+                                to="/dashboard/insurance"
+                                className="btn btn-primary bg-primary text-white px-6 py-2 rounded-lg font-bold hover:bg-primary/90 transition-colors w-full text-center"
+                            >
                                 Buy Insurance
-                            </button>
+                            </Link>
                         </div>
                     )}
                 </div>
@@ -179,34 +229,54 @@ const MarketTab = () => {
             {/* Liquidation Alert Modal */}
             {showLiquidationModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in">
-                    <div className="bg-surface border border-error rounded-2xl max-w-md w-full p-8 shadow-2xl relative overflow-hidden">
-                        <div className="absolute top-0 left-0 w-full h-2 bg-error animate-pulse" />
+                    <div className="bg-surface border border-success rounded-2xl max-w-md w-full p-8 shadow-2xl relative overflow-hidden">
+                        <div className="absolute top-0 left-0 w-full h-2 bg-success" />
                         <div className="text-center space-y-6 relative z-10">
-                            <div className="mx-auto h-20 w-20 bg-error/20 rounded-full flex items-center justify-center animate-bounce">
-                                <AlertTriangle className="h-10 w-10 text-error" />
+                            <div className="mx-auto h-20 w-20 bg-success/20 rounded-full flex items-center justify-center">
+                                <CheckCircle className="h-10 w-10 text-success" />
                             </div>
                             <div>
-                                <h2 className="text-3xl font-black text-white mb-2">LIQUIDATION DETECTED</h2>
+                                <h2 className="text-3xl font-black text-white mb-2">CLAIM PAID!</h2>
                                 <p className="text-gray-300">
-                                    Your {selectedAsset} position has been liquidated at ${currentPrice.toFixed(2)}.
+                                    Your {selectedAsset} position was liquidated at ${currentPrice?.toFixed(2) || '0.00'}.
                                 </p>
                             </div>
 
-                            <div className="bg-background p-4 rounded-xl border border-border">
-                                <div className="flex items-center gap-3 mb-2">
-                                    <CheckCircle className="h-5 w-5 text-success" />
-                                    <span className="font-bold text-white">SafeKeeper Activated</span>
+                            <div className="bg-background p-4 rounded-xl border border-border text-left space-y-3">
+                                <div className="flex justify-between">
+                                    <span className="text-sm text-gray-400">Position Size</span>
+                                    <span className="font-bold text-white">{positionSizeEth} ETH</span>
                                 </div>
-                                <p className="text-sm text-gray-400 text-left">
-                                    We have detected the event and initiated your payout claim. Check your wallet for the reimbursement.
-                                </p>
+                                <div className="flex justify-between">
+                                    <span className="text-sm text-gray-400">Coverage (50%)</span>
+                                    <span className="font-bold text-success">+{(parseFloat(positionSizeEth) * 0.5).toFixed(4)} ETH</span>
+                                </div>
+                                <div className="flex justify-between pt-2 border-t border-border">
+                                    <span className="text-sm text-gray-400">Status</span>
+                                    <span className="font-bold text-success flex items-center gap-1">
+                                        <CheckCircle className="h-4 w-4" /> DEPOSITED
+                                    </span>
+                                </div>
+                            </div>
+
+                            {/* Tenderly Verification Link */}
+                            <div className="bg-primary/10 p-3 rounded-xl border border-primary/20">
+                                <p className="text-xs text-primary mb-2">🔗 Verify on chain:</p>
+                                <a
+                                    href={`https://dashboard.tenderly.co/nokia/project/testnet/ffc6a7bf-ef70-4321-af81-77cd1d06e3a2/wallets?address=${address}`}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="text-primary hover:text-primary/80 font-mono text-xs underline"
+                                >
+                                    View Wallet Balance on Tenderly →
+                                </a>
                             </div>
 
                             <button
-                                onClick={() => setShowLiquidationModal(false)}
-                                className="w-full py-3 bg-white text-black font-bold rounded-xl hover:bg-gray-200 transition-colors"
+                                onClick={handleDismissModal}
+                                className="w-full py-3 bg-success text-black font-bold rounded-xl hover:bg-success/90 transition-colors"
                             >
-                                Acknowledge
+                                Got it!
                             </button>
                         </div>
                     </div>

@@ -36,13 +36,18 @@ const ProfileTab = () => {
     useEffect(() => {
         const fetchPolicies = async () => {
             if (address) {
-                setLoading(true);
+                console.log('[ProfileTab] Fetching policies...');
                 const data = await getPolicies();
-                setPolicies(data || []);
+                console.log('[ProfileTab] Policies:', data);
+                setPolicies(Array.isArray(data) ? data : []);
                 setLoading(false);
             }
         };
         fetchPolicies();
+
+        // Auto-refresh every 5 seconds to catch liquidation status changes
+        const interval = setInterval(fetchPolicies, 5000);
+        return () => clearInterval(interval);
     }, [address, getPolicies]);
 
     // Separate policies by status
