@@ -30,18 +30,32 @@ router.post('/quote', async (req, res) => {
 router.post('/buy', async (req, res) => {
     const { userAddress, positionSize, leverage, liquidationPrice, premiumPaid, txHash, coin = 'ETH' } = req.body;
 
+    console.log('\n═══════════════════════════════════════════════════════════');
+    console.log('[BUY] 🛡️ New Insurance Purchase Request');
+    console.log('═══════════════════════════════════════════════════════════');
+    console.log(`[BUY] User: ${userAddress}`);
+    console.log(`[BUY] Coin: ${coin}`);
+    console.log(`[BUY] Position Size: ${positionSize} wei`);
+    console.log(`[BUY] Leverage: ${leverage}x`);
+    console.log(`[BUY] Liquidation Price: ${liquidationPrice} wei`);
+    console.log(`[BUY] Premium Paid: ${premiumPaid} wei`);
+    console.log(`[BUY] TX Hash: ${txHash}`);
+
     try {
         // 1. Create or Find User
         let user = await prisma.user.findUnique({ where: { address: userAddress } });
         if (!user) {
             user = await prisma.user.create({ data: { address: userAddress } });
+            console.log(`[BUY] ✅ Created new user: ${userAddress}`);
+        } else {
+            console.log(`[BUY] 👤 User exists: ${userAddress}`);
         }
 
-        // 2. Create Policy (unique per userAddress + coin)
+        // 2. Create Policy
         const policy = await prisma.policy.create({
             data: {
                 userAddress,
-                coin, // Asset being insured (ETH, BTC, SOL, etc.)
+                coin,
                 positionSize: positionSize.toString(),
                 leverage: parseInt(leverage),
                 liquidationPrice: liquidationPrice.toString(),
@@ -51,8 +65,14 @@ router.post('/buy', async (req, res) => {
             }
         });
 
+        console.log(`[BUY] ✅ Policy created successfully!`);
+        console.log(`[BUY] 📋 Policy ID: ${policy.id}`);
+        console.log(`[BUY] 📊 Status: ${policy.status}`);
+        console.log('═══════════════════════════════════════════════════════════\n');
+
         res.json({ success: true, policy });
     } catch (error) {
+        console.error(`[BUY] ❌ Error: ${error.message}`);
         console.error(error);
         res.status(500).json({ error: 'Failed to purchase policy' });
     }
