@@ -14,10 +14,10 @@ const Dashboard = () => {
     };
 
     const tabs = [
-        { name: 'Market', path: 'market' },
-        { name: 'Liquidity', path: 'liquidity' },
-        { name: 'Insurance', path: 'insurance' },
-        { name: 'Your Profile', path: 'profile' },
+        { name: 'Market', path: '/dashboard/market' },
+        { name: 'Liquidity', path: '/dashboard/liquidity' },
+        { name: 'Insurance', path: '/dashboard/insurance' },
+        { name: 'Your Profile', path: '/dashboard/profile' },
     ];
 
     return (
