@@ -22,6 +22,7 @@ model Policy {
   id               String   @id @default(uuid())
   user             User     @relation(fields: [userAddress], references: [address])
   userAddress      String
+  coin             String   @default("ETH") // Asset being insured (ETH, BTC, SOL, etc.)
   positionSize     String
   leverage         Int
   liquidationPrice String

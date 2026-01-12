@@ -10,6 +10,7 @@ import insuranceRoutes from './routes/insurance.js';
 import poolRoutes from './routes/pool.js';
 import authRoutes from './routes/auth.js';
 import claimsRoutes from './routes/claims.js';
+import debugRoutes from './routes/debug.js';
 import { startLiquidationMonitor, stopLiquidationMonitor } from './jobs/liquidationMonitor.js';
 import { publicClient } from './config/viem.js';
 
@@ -28,6 +29,7 @@ app.use('/api/insurance', insuranceRoutes);
 app.use('/api/pool', poolRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/claims', claimsRoutes);
+app.use('/api/debug', debugRoutes);
 
 //health check endpoint
 app.get('/health', async (req, res) => {

@@ -28,7 +28,7 @@ router.post('/quote', async (req, res) => {
 
 // POST /api/insurance/buy
 router.post('/buy', async (req, res) => {
-    const { userAddress, positionSize, leverage, liquidationPrice, premiumPaid, txHash } = req.body;
+    const { userAddress, positionSize, leverage, liquidationPrice, premiumPaid, txHash, coin = 'ETH' } = req.body;
 
     try {
         // 1. Create or Find User
@@ -37,10 +37,11 @@ router.post('/buy', async (req, res) => {
             user = await prisma.user.create({ data: { address: userAddress } });
         }
 
-        // 2. Create Policy
+        // 2. Create Policy (unique per userAddress + coin)
         const policy = await prisma.policy.create({
             data: {
                 userAddress,
+                coin, // Asset being insured (ETH, BTC, SOL, etc.)
                 positionSize: positionSize.toString(),
                 leverage: parseInt(leverage),
                 liquidationPrice: liquidationPrice.toString(),

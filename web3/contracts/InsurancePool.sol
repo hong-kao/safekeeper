@@ -18,11 +18,13 @@ contract InsurancePool{
     uint256 public totalPremiumsCollected;
     uint256 public totalClaimsPaid;
     
-    mapping(address => uint256) public premiumsPaid;
-    mapping(address => bool) public hasClaim;
+    // Track premiums per policy ID
+    mapping(uint256 => uint256) public policyPremiums;
+    // Track claims per policy ID
+    mapping(uint256 => bool) public policyClaimed;
 
-    event InsurancePurchased(address indexed user, uint256 positionSize, uint256 premium);
-    event ClaimPaid(address indexed user, uint256 lossAmount, uint256 payoutAmount);
+    event InsurancePurchased(address indexed user, uint256 indexed policyId, uint256 positionSize, uint256 premium);
+    event ClaimPaid(address indexed user, uint256 indexed policyId, uint256 lossAmount, uint256 payoutAmount);
     event AdminChanged(address indexed oldAdmin, address indexed newAdmin);
     event Paused(address indexed by);
     event Unpaused(address indexed by);
@@ -51,7 +53,7 @@ contract InsurancePool{
         uint256 positionSize,
         uint256 leverage,
         uint256 liquidationPrice
-    ) external payable notPaused{
+    ) external payable notPaused returns (uint256){
         require(positionSize > 0, "InsurancePool: position size must be > 0");
         require(leverage > 0, "InsurancePool: leverage must be > 0");
         require(liquidationPrice > 0, "InsurancePool: liquidation price must be > 0");
@@ -60,7 +62,7 @@ contract InsurancePool{
         uint256 expectedPremium = pricingContract.premiumAmount(positionSize, leverage, 0);
         require(msg.value >= expectedPremium, "InsurancePool: insufficient premium");
         
-        policyRegistry.createPolicy(
+        uint256 policyId = policyRegistry.createPolicy(
             msg.sender,
             positionSize,
             leverage,
@@ -68,33 +70,36 @@ contract InsurancePool{
             msg.value
         );
         
-        premiumsPaid[msg.sender] = msg.value;
+        policyPremiums[policyId] = msg.value;
         totalPremiumsCollected += msg.value;
         poolBalance += msg.value;
         
-        emit InsurancePurchased(msg.sender, positionSize, msg.value);
+        emit InsurancePurchased(msg.sender, policyId, positionSize, msg.value);
+        return policyId;
     }
 
-    function submitClaim(address user, uint256 lossAmount) external onlyAdmin{
+    function submitClaim(address user, uint256 policyIndex, uint256 lossAmount) external onlyAdmin{
         require(user != address(0), "InsurancePool: invalid user address");
         require(lossAmount > 0, "InsurancePool: loss amount must be > 0");
-        require(policyRegistry.hasPolicy(user), "InsurancePool: no active policy for user");
-        require(!hasClaim[user], "InsurancePool: claim already submitted");
+        require(policyRegistry.isPolicyActive(user, policyIndex), "InsurancePool: no active policy at this index");
+        
+        PolicyRegistry.Policy memory policy = policyRegistry.getPolicy(user, policyIndex);
+        require(!policyClaimed[policy.id], "InsurancePool: claim already submitted for this policy");
         
         uint256 payout = (lossAmount * COVERAGE_BPS) / 10000;
         require(poolBalance >= payout, "InsurancePool: insufficient pool balance");
         
         //cei pattern
-        hasClaim[user] = true;
+        policyClaimed[policy.id] = true;
         poolBalance -= payout;
         totalClaimsPaid += payout;
         
-        policyRegistry.markClaimed(user);
+        policyRegistry.markClaimed(user, policyIndex);
         
         (bool success, ) = payable(user).call{value: payout}("");
         require(success, "InsurancePool: payout transfer failed");
         
-        emit ClaimPaid(user, lossAmount, payout);
+        emit ClaimPaid(user, policy.id, lossAmount, payout);
     }
 
     function getPoolStatus() external view returns(

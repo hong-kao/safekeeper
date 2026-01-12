@@ -278,58 +278,111 @@ export async function getUserFills(userAddress) {
 
 //=== MOCK FUNCTIONS FOR DEMO ===
 
+//simulated market prices (persisted between calls)
+const mockMarketPrices = new Map();
+const MOCK_PRICE_VOLATILITY = 0.02; //2% price movement per check
+
+/**
+ * get or initialize mock market price for a coin
+ */
+function getMockMarketPrice(coin = 'ETH', basePrice = 3000) {
+    if (!mockMarketPrices.has(coin)) {
+        mockMarketPrices.set(coin, basePrice);
+    }
+    return mockMarketPrices.get(coin);
+}
+
+/**
+ * simulate price movement (random walk)
+ */
+function simulatePriceMovement(coin = 'ETH', basePrice = 3000) {
+    let currentPrice = getMockMarketPrice(coin, basePrice);
+
+    //random walk: -2% to +2% per check
+    const movement = (Math.random() - 0.5) * 2 * MOCK_PRICE_VOLATILITY;
+    currentPrice = currentPrice * (1 + movement);
+
+    mockMarketPrices.set(coin, currentPrice);
+    return currentPrice;
+}
+
+/**
+ * force a price crash for demo (call this to trigger liquidation)
+ */
+export function forceMockPriceCrash(coin = 'ETH', crashPercent = 0.15) {
+    const currentPrice = getMockMarketPrice(coin, 3000);
+    const crashedPrice = currentPrice * (1 - crashPercent);
+    mockMarketPrices.set(coin, crashedPrice);
+    console.log(`[MOCK] 📉 Price crash forced: ${coin} dropped to $${crashedPrice.toFixed(2)}`);
+    return crashedPrice;
+}
+
+/**
+ * reset mock market prices
+ */
+export function resetMockPrices() {
+    mockMarketPrices.clear();
+    console.log('[MOCK] Prices reset');
+}
+
+/**
+ * set specific mock price
+ */
+export function setMockPrice(coin, price) {
+    mockMarketPrices.set(coin, price);
+    console.log(`[MOCK] ${coin} price set to $${price.toFixed(2)}`);
+}
+
 /**
  * mock hyperliquid check for demo/testing
+ * NOW PROPERLY SIMULATES PRICE VS LIQUIDATION PRICE
  */
 function mockHyperliquidCheck(userAddress, policy) {
-    //5% chance of liquidation every check (for demo)
-    const shouldLiquidate = Math.random() < 0.05;
+    const coin = policy.coin || 'ETH';
 
-    const baseLiqPrice = parseFloat(policy.liquidationPrice) / 1e18 || 2850;
-
-    if (shouldLiquidate) {
-        const droppedPrice = baseLiqPrice * 0.99;
-        console.log(`[MOCK] 🔴 Liquidation triggered for ${userAddress}`);
-
-        return {
-            isLiquidated: true,
-            currentPrice: droppedPrice,
-            position: {
-                coin: policy.coin || 'ETH',
-                szi: policy.positionSize,
-                entryPx: (baseLiqPrice * 1.1).toFixed(2),
-                liquidationPx: baseLiqPrice.toFixed(2),
-                positionValue: policy.positionSize,
-                unrealizedPnl: '-' + (parseFloat(policy.positionSize) * 0.1).toFixed(2),
-                isLong: true,
-            },
-            marginInfo: {
-                accountValue: 1000,
-                totalMarginUsed: 800,
-                availableBalance: 200,
-            },
-        };
+    //parse liquidation price (could be in wei or regular number)
+    let liquidationPrice = parseFloat(policy.liquidationPrice);
+    if (liquidationPrice > 1e10) {
+        liquidationPrice = liquidationPrice / 1e18; //convert from wei
     }
 
-    //otherwise, price is safe (5% above liquidation)
-    const safePrice = baseLiqPrice * 1.05;
+    //estimate a reasonable entry price (10% above liquidation for 10x leverage)
+    const entryPrice = liquidationPrice * 1.1;
+
+    //simulate price movement
+    const currentPrice = simulatePriceMovement(coin, entryPrice);
+
+    //check if price has crossed liquidation threshold
+    //for LONG positions: liquidated when price <= liquidationPrice
+    const isLong = true; //assume long for now
+    const isLiquidated = isLong
+        ? currentPrice <= liquidationPrice
+        : currentPrice >= liquidationPrice;
+
+    if (isLiquidated) {
+        console.log(`[MOCK] 🔴 LIQUIDATION: ${userAddress.slice(0, 10)}...`);
+        console.log(`       ${coin} Price: $${currentPrice.toFixed(2)} <= Liquidation: $${liquidationPrice.toFixed(2)}`);
+    } else {
+        const buffer = ((currentPrice - liquidationPrice) / liquidationPrice * 100).toFixed(1);
+        console.log(`[MOCK] 🟢 Safe: ${coin} $${currentPrice.toFixed(2)} (${buffer}% above liq)`);
+    }
 
     return {
-        isLiquidated: false,
-        currentPrice: safePrice,
+        isLiquidated,
+        currentPrice,
         position: {
-            coin: policy.coin || 'ETH',
+            coin,
             szi: policy.positionSize,
-            entryPx: (baseLiqPrice * 1.1).toFixed(2),
-            liquidationPx: baseLiqPrice.toFixed(2),
+            entryPx: entryPrice.toFixed(2),
+            liquidationPx: liquidationPrice.toFixed(2),
             positionValue: policy.positionSize,
-            unrealizedPnl: (parseFloat(policy.positionSize) * 0.05).toFixed(2),
-            isLong: true,
+            unrealizedPnl: ((currentPrice - entryPrice) * parseFloat(policy.positionSize || 1)).toFixed(2),
+            isLong,
         },
         marginInfo: {
-            accountValue: 1500,
+            accountValue: isLiquidated ? 0 : 1500,
             totalMarginUsed: 500,
-            availableBalance: 1000,
+            availableBalance: isLiquidated ? 0 : 1000,
         },
     };
 }

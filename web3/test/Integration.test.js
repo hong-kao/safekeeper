@@ -7,7 +7,7 @@ const { ethers } = require("hardhat");
  * End-to-end tests simulating the full demo flow:
  * 1. Deploy all contracts
  * 2. Fund the pool
- * 3. Multiple users buy insurance
+ * 3. Multiple users buy insurance (now supports multiple policies per user!)
  * 4. Simulate liquidation events
  * 5. Verify payouts and state updates
  */
@@ -60,7 +60,7 @@ describe("Integration", function () {
 
             // Verify policy created
             expect(await registry.hasPolicy(trader1.address)).to.equal(true);
-            const policy = await registry.getPolicy(trader1.address);
+            const policy = await registry.getPolicy(trader1.address, 0); // Index 0
             expect(policy.positionSize).to.equal(positionSize);
             expect(policy.leverage).to.equal(leverage);
             expect(policy.premiumPaid).to.equal(premium);
@@ -77,8 +77,8 @@ describe("Integration", function () {
 
             const balanceBefore = await ethers.provider.getBalance(trader1.address);
 
-            // Admin (backend) submits claim
-            await pool.submitClaim(trader1.address, lossAmount);
+            // Admin (backend) submits claim with policy index
+            await pool.submitClaim(trader1.address, 0, lossAmount);
 
             const balanceAfter = await ethers.provider.getBalance(trader1.address);
 
@@ -87,7 +87,7 @@ describe("Integration", function () {
 
             // Verify policy marked as claimed
             expect(await registry.hasPolicy(trader1.address)).to.equal(false);
-            const claimedPolicy = await registry.getPolicy(trader1.address);
+            const claimedPolicy = await registry.getPolicy(trader1.address, 0);
             expect(claimedPolicy.claimed).to.equal(true);
 
             // Verify pool status updated
@@ -120,16 +120,16 @@ describe("Integration", function () {
             expect(await registry.hasPolicy(trader1.address)).to.equal(true);
             expect(await registry.hasPolicy(trader2.address)).to.equal(true);
 
-            // Trader1 gets liquidated
-            await pool.submitClaim(trader1.address, position1);
+            // Trader1 gets liquidated (policy index 0)
+            await pool.submitClaim(trader1.address, 0, position1);
 
             // Trader1 claimed, Trader2 still active
             expect(await registry.hasPolicy(trader1.address)).to.equal(false);
             expect(await registry.hasPolicy(trader2.address)).to.equal(true);
             expect(await registry.getActivePoliciesCount()).to.equal(1);
 
-            // Trader2 gets liquidated later
-            await pool.submitClaim(trader2.address, position2);
+            // Trader2 gets liquidated later (policy index 0)
+            await pool.submitClaim(trader2.address, 0, position2);
 
             // Both claimed
             expect(await registry.getActivePoliciesCount()).to.equal(0);
@@ -141,8 +141,52 @@ describe("Integration", function () {
         });
     });
 
-    describe("Demo Flow: User cannot claim twice", function () {
-        it("should prevent double-claiming for same user", async function () {
+    describe("Demo Flow: Same User Multiple Policies", function () {
+        it("should allow same user to buy and claim multiple policies", async function () {
+            const premium1 = await pricing.premiumAmount(ethers.parseEther("50"), 10, 0);
+            const premium2 = await pricing.premiumAmount(ethers.parseEther("75"), 10, 0);
+            const premium3 = await pricing.premiumAmount(ethers.parseEther("100"), 10, 0);
+
+            // Trader1 buys 3 different policies with correct premiums
+            await pool.connect(trader1).buyInsurance(ethers.parseEther("50"), 10, ethers.parseEther("2850"), { value: premium1 });
+            await pool.connect(trader1).buyInsurance(ethers.parseEther("75"), 10, ethers.parseEther("2800"), { value: premium2 });
+            await pool.connect(trader1).buyInsurance(ethers.parseEther("100"), 10, ethers.parseEther("2750"), { value: premium3 });
+
+            expect(await registry.getUserPoliciesCount(trader1.address)).to.equal(3);
+            expect(await registry.getActivePoliciesCount()).to.equal(3);
+
+            // Claim the middle policy (index 1)
+            await pool.submitClaim(trader1.address, 1, ethers.parseEther("75"));
+
+            // Policy 1 claimed, others still active
+            expect(await registry.isPolicyActive(trader1.address, 0)).to.equal(true);
+            expect(await registry.isPolicyActive(trader1.address, 1)).to.equal(false);
+            expect(await registry.isPolicyActive(trader1.address, 2)).to.equal(true);
+
+            expect(await registry.hasPolicy(trader1.address)).to.equal(true); // Still has active policies
+            expect(await registry.getActivePoliciesCount()).to.equal(2);
+        });
+
+        it("should track each policy independently", async function () {
+            const position1 = ethers.parseEther("100");
+            const position2 = ethers.parseEther("200");
+            const premium1 = await pricing.premiumAmount(position1, 10, 0);
+            const premium2 = await pricing.premiumAmount(position2, 20, 0);
+
+            await pool.connect(trader1).buyInsurance(position1, 10, ethers.parseEther("2850"), { value: premium1 });
+            await pool.connect(trader1).buyInsurance(position2, 20, ethers.parseEther("2700"), { value: premium2 });
+
+            const policies = await registry.getUserPolicies(trader1.address);
+            expect(policies.length).to.equal(2);
+            expect(policies[0].positionSize).to.equal(position1);
+            expect(policies[0].leverage).to.equal(10);
+            expect(policies[1].positionSize).to.equal(position2);
+            expect(policies[1].leverage).to.equal(20);
+        });
+    });
+
+    describe("Demo Flow: User cannot claim twice on same policy", function () {
+        it("should prevent double-claiming for same policy", async function () {
             // Trader buys insurance
             const premium = await pricing.premiumAmount(ethers.parseEther("100"), 10, 0);
             await pool.connect(trader1).buyInsurance(ethers.parseEther("100"), 10, ethers.parseEther("2850"), {
@@ -150,11 +194,27 @@ describe("Integration", function () {
             });
 
             // First claim succeeds
-            await pool.submitClaim(trader1.address, ethers.parseEther("100"));
+            await pool.submitClaim(trader1.address, 0, ethers.parseEther("100"));
 
             // Second claim fails (policy already claimed)
-            await expect(pool.submitClaim(trader1.address, ethers.parseEther("100")))
-                .to.be.revertedWith("InsurancePool: no active policy for user");
+            await expect(pool.submitClaim(trader1.address, 0, ethers.parseEther("100")))
+                .to.be.revertedWith("InsurancePool: no active policy at this index");
+        });
+
+        it("should allow claiming different policies for same user", async function () {
+            const premium1 = await pricing.premiumAmount(ethers.parseEther("50"), 10, 0);
+            const premium2 = await pricing.premiumAmount(ethers.parseEther("60"), 10, 0);
+
+            // User buys 2 policies with correct premiums
+            await pool.connect(trader1).buyInsurance(ethers.parseEther("50"), 10, ethers.parseEther("2850"), { value: premium1 });
+            await pool.connect(trader1).buyInsurance(ethers.parseEther("60"), 10, ethers.parseEther("2800"), { value: premium2 });
+
+            // Claim first policy
+            await pool.submitClaim(trader1.address, 0, ethers.parseEther("50"));
+
+            // Claim second policy - should work
+            await expect(pool.submitClaim(trader1.address, 1, ethers.parseEther("60")))
+                .to.emit(pool, "ClaimPaid");
         });
     });
 
@@ -182,9 +242,24 @@ describe("Integration", function () {
 
             // Trader1 claims (pool -payout)
             const payout1 = ethers.parseEther("20") * 5000n / 10000n;
-            await pool.submitClaim(trader1.address, ethers.parseEther("20"));
+            await pool.submitClaim(trader1.address, 0, ethers.parseEther("20"));
             [balance, , ,] = await pool.getPoolStatus();
             expect(balance).to.equal(poolSeedFunding + premium1 + premium2 - payout1);
+        });
+
+        it("should handle same user buying multiple policies with correct balance tracking", async function () {
+            const premium = await pricing.premiumAmount(ethers.parseEther("50"), 10, 0);
+
+            // User buys 3 policies
+            for (let i = 0; i < 3; i++) {
+                await pool.connect(trader1).buyInsurance(ethers.parseEther("50"), 10, ethers.parseEther("2850"), {
+                    value: premium
+                });
+            }
+
+            const [balance, totalPremiums, ,] = await pool.getPoolStatus();
+            expect(balance).to.equal(poolSeedFunding + premium * 3n);
+            expect(totalPremiums).to.equal(premium * 3n);
         });
     });
 
@@ -225,7 +300,7 @@ describe("Integration", function () {
             })).to.be.revertedWith("InsurancePool: pool is paused");
 
             // Existing claims still processed
-            await expect(pool.submitClaim(trader1.address, ethers.parseEther("50")))
+            await expect(pool.submitClaim(trader1.address, 0, ethers.parseEther("50")))
                 .to.emit(pool, "ClaimPaid");
         });
 
@@ -271,10 +346,53 @@ describe("Integration", function () {
             const exactLoss = poolBalance * 10000n / 5000n; // Since payout = loss * 50%
 
             // Submit claim that drains exactly
-            await pool.submitClaim(trader1.address, exactLoss);
+            await pool.submitClaim(trader1.address, 0, exactLoss);
 
             // Pool should be exactly 0
             expect(await pool.poolBalance()).to.equal(0);
+        });
+    });
+
+    describe("STRESS TEST: Complex Multi-User Multi-Policy Scenario", function () {
+        it("should handle complex scenario with multiple users, multiple policies, partial claims", async function () {
+            const premium50 = await pricing.premiumAmount(ethers.parseEther("50"), 10, 0);
+            const premium40 = await pricing.premiumAmount(ethers.parseEther("40"), 10, 0);
+            const premium60 = await pricing.premiumAmount(ethers.parseEther("60"), 10, 0);
+
+            // Trader1 buys 3 policies (50 ETH each)
+            for (let i = 0; i < 3; i++) {
+                await pool.connect(trader1).buyInsurance(ethers.parseEther("50"), 10, ethers.parseEther("2850"), { value: premium50 });
+            }
+
+            // Trader2 buys 2 policies (40 ETH each)
+            for (let i = 0; i < 2; i++) {
+                await pool.connect(trader2).buyInsurance(ethers.parseEther("40"), 10, ethers.parseEther("2800"), { value: premium40 });
+            }
+
+            // Trader3 buys 1 policy (60 ETH)
+            await pool.connect(trader3).buyInsurance(ethers.parseEther("60"), 10, ethers.parseEther("2900"), { value: premium60 });
+
+            expect(await registry.getActivePoliciesCount()).to.equal(6);
+
+            // Claim some policies
+            await pool.submitClaim(trader1.address, 1, ethers.parseEther("50")); // Trader1's middle policy
+            await pool.submitClaim(trader2.address, 0, ethers.parseEther("40")); // Trader2's first policy
+
+            expect(await registry.getActivePoliciesCount()).to.equal(4);
+            expect(await registry.hasPolicy(trader1.address)).to.equal(true); // Still has 2 active
+            expect(await registry.hasPolicy(trader2.address)).to.equal(true); // Still has 1 active
+            expect(await registry.hasPolicy(trader3.address)).to.equal(true); // Untouched
+
+            // Claim remaining
+            await pool.submitClaim(trader1.address, 0, ethers.parseEther("50"));
+            await pool.submitClaim(trader1.address, 2, ethers.parseEther("50"));
+            await pool.submitClaim(trader2.address, 1, ethers.parseEther("40"));
+            await pool.submitClaim(trader3.address, 0, ethers.parseEther("60"));
+
+            expect(await registry.getActivePoliciesCount()).to.equal(0);
+            expect(await registry.hasPolicy(trader1.address)).to.equal(false);
+            expect(await registry.hasPolicy(trader2.address)).to.equal(false);
+            expect(await registry.hasPolicy(trader3.address)).to.equal(false);
         });
     });
 });
