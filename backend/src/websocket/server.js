@@ -12,7 +12,9 @@ export function startWebSocketServer(httpServer) {
             try {
                 const data = JSON.parse(message);
                 if (data.type === 'subscribe') {
-                    console.log(`[WS] Client subscribed: ${data.channel}`);
+                    // Handle both 'channel' (string) and 'channels' (array) formats
+                    const channels = data.channels || (data.channel ? [data.channel] : []);
+                    console.log(`[WS] Client subscribed: ${channels.join(', ') || 'all'}`);
                 }
             } catch (e) {
                 console.error('[WS] Error parsing message:', e);

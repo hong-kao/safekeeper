@@ -5,23 +5,26 @@ import { PrismaClient } from '@prisma/client';
 import { checkHyperliquidPosition } from '../services/hyperliquidService.js';
 import { submitClaimOnChain, getPoolStatus, isPoolPaused } from '../services/claimSubmitter.js';
 import { calculatePayout } from '../utils/web3.js';
+import log from '../utils/logger.js';
 
 const prisma = new PrismaClient();
 let isRunning = false;
 let monitorTask = null;
+let priceInterval = null;  // Track price broadcaster for graceful shutdown
 
 /**
  * start liquidation monitor cron job
  * runs every 10 seconds in mvp
  */
 export function startLiquidationMonitor(broadcastToWebSocket) {
-    console.log('[MONITOR] Starting liquidation monitor...');
+    log.monitor('Starting liquidation monitor...');
 
     // Start price broadcaster (every 3s for "real-time" feel)
-    setInterval(async () => {
+    priceInterval = setInterval(async () => {
         try {
             const prices = await import('../services/hyperliquidService.js').then(m => m.getAllAssetPrices());
             if (prices) {
+                log.price(`ETH=$${prices.ETH?.toFixed(2) || '?'} | BTC=$${prices.BTC?.toFixed(2) || '?'}`);
                 broadcastToWebSocket('market_prices', {
                     type: 'MARKET_PRICES',
                     prices,
@@ -72,8 +75,11 @@ export function startLiquidationMonitor(broadcastToWebSocket) {
 export function stopLiquidationMonitor() {
     if (monitorTask) {
         monitorTask.stop();
-        console.log('[MONITOR] Stopped');
     }
+    if (priceInterval) {
+        clearInterval(priceInterval);
+    }
+    console.log('[MONITOR] Stopped');
 }
 
 /**

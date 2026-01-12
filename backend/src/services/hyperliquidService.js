@@ -28,29 +28,15 @@ function getMockMarketPrice(coin = 'ETH', basePrice = 3000) {
 }
 
 /**
- * Simulate price movement (random walk with demo crash)
+ * Simulate realistic price movement (random walk only)
+ * Crash only happens via forceMockPriceCrash() called by /force-crash endpoint
  */
 function simulatePriceMovement(coin = 'ETH', basePrice = 3000) {
     let currentPrice = getMockMarketPrice(coin, basePrice);
 
-    // Track calls per coin for demo crash timing
-    const count = (priceCallCount.get(coin) || 0) + 1;
-    priceCallCount.set(coin, count);
-
-    // DEMO MODE: Force crash after 5-10 calls (within ~30-60 seconds)
-    let movement;
-    if (count > 5 && count < 20) {
-        // Strong downward bias during crash window
-        movement = -0.02 - (Math.random() * 0.02); // -2% to -4% per check
-        console.log(`[MOCK] 📉 Demo crash in progress (call ${count})`);
-    } else if (count >= 20) {
-        // Reset for next demo
-        priceCallCount.set(coin, 0);
-        movement = (Math.random() - 0.5) * 2 * MOCK_PRICE_VOLATILITY;
-    } else {
-        // Normal random walk before crash
-        movement = (Math.random() - 0.5) * 2 * MOCK_PRICE_VOLATILITY;
-    }
+    // Simple random walk - small movements like real market
+    // ±0.5% per update (every 3 seconds)
+    const movement = (Math.random() - 0.5) * 2 * MOCK_PRICE_VOLATILITY;
 
     currentPrice = currentPrice * (1 + movement);
     mockMarketPrices.set(coin, currentPrice);
@@ -202,17 +188,16 @@ async function getMarkPrice(coin) {
 
 /**
  * get all asset prices from hyperliquid
- * IMPORTANT: In mock mode, uses the same mockMarketPrices map as simulatePriceMovement
- * so frontend and liquidation monitor see the SAME prices
+ * IMPORTANT: In mock mode, calls simulatePriceMovement to advance prices
+ * This ensures prices change even when no policies are being monitored
  */
 export async function getAllAssetPrices() {
     if (MOCK_MODE) {
-        // Use the same mockMarketPrices map that simulatePriceMovement uses
-        // This ensures frontend and backend are in sync
+        // Call simulatePriceMovement to advance prices with each broadcast
         return {
-            ETH: getMockMarketPrice('ETH', 3000),
-            BTC: getMockMarketPrice('BTC', 45000),
-            SOL: getMockMarketPrice('SOL', 100),
+            ETH: simulatePriceMovement('ETH', 3000),
+            BTC: simulatePriceMovement('BTC', 45000),
+            SOL: simulatePriceMovement('SOL', 100),
         };
     }
 
@@ -361,7 +346,7 @@ export function setMockPrice(coin, price) {
 
 /**
  * mock hyperliquid check for demo/testing
- * NOW PROPERLY SIMULATES PRICE VS LIQUIDATION PRICE
+ * Uses the SAME global price from getAllAssetPrices for consistency
  */
 function mockHyperliquidCheck(userAddress, policy) {
     const coin = policy.coin || 'ETH';
@@ -375,8 +360,9 @@ function mockHyperliquidCheck(userAddress, policy) {
     //estimate a reasonable entry price (10% above liquidation for 10x leverage)
     const entryPrice = liquidationPrice * 1.1;
 
-    //simulate price movement
-    const currentPrice = simulatePriceMovement(coin, entryPrice);
+    // Use the SAME global price that getAllAssetPrices() broadcasts
+    // This ensures frontend price and liquidation check are in sync
+    const currentPrice = getMockMarketPrice(coin, 3000);
 
     //check if price has crossed liquidation threshold
     //for LONG positions: liquidated when price <= liquidationPrice

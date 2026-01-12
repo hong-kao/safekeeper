@@ -108,6 +108,7 @@ router.get('/policies/:user', async (req, res) => {
     try {
         const policies = await prisma.policy.findMany({
             where: { userAddress: user },
+            include: { claim: true },
             orderBy: { createdAt: 'desc' }
         });
 
