@@ -1,28 +1,59 @@
-import { walletClient, publicClient } from '../config/viem.js';
-import { INSURANCE_POOL_ABI } from '../config/contractABIs.js';
+//claim submission service for on-chain transactions
 
-const POOL_ADDRESS = process.env.INSURANCE_POOL_ADDRESS || '0x0000000000000000000000000000000000000000';
-const MOCK_MODE = process.env.MOCK_WEB3 !== 'false'; // Default to mock for now
+import { walletClient, publicClient } from '../config/viem.js';
+import { INSURANCE_POOL_ABI, CONTRACTS } from '../config/contractABIs.js';
+
+const MOCK_MODE = process.env.MOCK_WEB3 === 'true';
 
 /**
- * Submit a claim to InsurancePool contract
+ * submit a claim to insurancepool contract
+ * @param {string} userAddress - user who should receive payout
+ * @param {string} lossAmount - loss amount (in wei)
+ * @returns {Promise<object>} { txHash, blockNumber, gasUsed }
  */
 export async function submitClaimOnChain(userAddress, lossAmount) {
     if (MOCK_MODE) {
         return mockClaimSubmission(userAddress, lossAmount);
     }
 
-    // [INTEGRATION-READY] Real Logic
     try {
-        console.log(`[CLAIM] Submitting claim for ${userAddress} on-chain...`);
+        console.log(`[CLAIM] Submitting claim for ${userAddress}`);
+        console.log(`[CLAIM] Loss amount: ${lossAmount} wei`);
+        console.log(`[CLAIM] Pool address: ${CONTRACTS.insurancePool}`);
+
+        //validate inputs
+        if (!userAddress || userAddress === '0x0000000000000000000000000000000000000000') {
+            throw new Error('Invalid user address');
+        }
+
+        if (BigInt(lossAmount) <= 0n) {
+            throw new Error('Loss amount must be > 0');
+        }
+
+        //call submitClaim on contract
         const txHash = await walletClient.writeContract({
-            address: POOL_ADDRESS,
+            address: CONTRACTS.insurancePool,
             abi: INSURANCE_POOL_ABI,
             functionName: 'submitClaim',
             args: [userAddress, BigInt(lossAmount)],
         });
+
         console.log(`[CLAIM] ✅ TX submitted: ${txHash}`);
-        return { txHash };
+
+        //wait for confirmation
+        const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
+
+        if (receipt.status !== 'success') {
+            throw new Error(`Transaction failed: ${receipt.status}`);
+        }
+
+        console.log(`[CLAIM] ✅ TX confirmed in block ${receipt.blockNumber}`);
+
+        return {
+            txHash,
+            blockNumber: Number(receipt.blockNumber),
+            gasUsed: Number(receipt.gasUsed),
+        };
     } catch (error) {
         console.error(`[CLAIM] ❌ Error submitting claim:`, error.message);
         throw error;
@@ -30,23 +61,38 @@ export async function submitClaimOnChain(userAddress, lossAmount) {
 }
 
 /**
- * Get current pool status from contract
+ * mock claim submission for mvp without live contracts
+ */
+function mockClaimSubmission(userAddress, lossAmount) {
+    const fakeTxHash = `0x${Math.random().toString(16).slice(2).padStart(64, '0')}`;
+
+    console.log(`[MOCK-CLAIM] Simulated claim for ${userAddress}`);
+    console.log(`[MOCK-CLAIM] Fake TX: ${fakeTxHash}`);
+
+    return {
+        txHash: fakeTxHash,
+        blockNumber: Math.floor(Math.random() * 1000000),
+        gasUsed: 150000,
+    };
+}
+
+/**
+ * get current pool status from contract
  */
 export async function getPoolStatus() {
     if (MOCK_MODE) {
         return {
-            poolBalance: "50000000000000000000", // 50 ETH
-            totalPremiums: "1000000000000000000", // 1 ETH 
-            totalClaims: "0",
-            activePolicies: "5"
+            poolBalance: '50000000000000000000',
+            totalPremiums: '1000000000000000000',
+            totalClaims: '0',
+            activePolicies: '5',
         };
     }
 
-    // [INTEGRATION-READY] Real Logic
     try {
         const [balance, totalPremiums, totalClaims, activePolicies] =
             await publicClient.readContract({
-                address: POOL_ADDRESS,
+                address: CONTRACTS.insurancePool,
                 abi: INSURANCE_POOL_ABI,
                 functionName: 'getPoolStatus',
             });
@@ -58,13 +104,26 @@ export async function getPoolStatus() {
             activePolicies: activePolicies.toString(),
         };
     } catch (error) {
-        console.error('[POOL] Error fetching pool status:', error);
+        console.error('[POOL] Error fetching pool status:', error.message);
         return null;
     }
 }
 
-function mockClaimSubmission(userAddress, lossAmount) {
-    const fakeTxHash = `0x${Math.random().toString(16).slice(2).padStart(64, '0')}`;
-    console.log(`[MOCK-CLAIM] Simulated claim for ${userAddress}. Fake TX: ${fakeTxHash}`);
-    return { txHash: fakeTxHash };
+/**
+ * check if pool is paused
+ */
+export async function isPoolPaused() {
+    if (MOCK_MODE) return false;
+
+    try {
+        const paused = await publicClient.readContract({
+            address: CONTRACTS.insurancePool,
+            abi: INSURANCE_POOL_ABI,
+            functionName: 'paused',
+        });
+        return paused;
+    } catch (error) {
+        console.error('[POOL] Error checking paused status:', error);
+        return false;
+    }
 }

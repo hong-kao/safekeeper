@@ -11,34 +11,64 @@ model User {
   id        String   @id @default(uuid())
   address   String   @unique
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
   policies  Policy[]
   claims    Claim[]
+
+  @@index([address])
 }
 
 model Policy {
   id               String   @id @default(uuid())
   user             User     @relation(fields: [userAddress], references: [address])
   userAddress      String
-  positionSize     String   // Stored as string to handle large numbers (wei)
+  positionSize     String
   leverage         Int
   liquidationPrice String
   premiumPaid      String
-  txHash           String
-  status           String   @default("ACTIVE") // ACTIVE, CLAIMED, EXPIRED
+  txHash           String   @unique
+  status           String   @default("ACTIVE")
   createdAt        DateTime @default(now())
   claim            Claim?
+
+  @@index([userAddress])
+  @@index([status])
 }
 
 model Claim {
-  id           String   @id @default(uuid())
-  user         User     @relation(fields: [userAddress], references: [address])
+  id           String    @id @default(uuid())
+  user         User      @relation(fields: [userAddress], references: [address])
   userAddress  String
-  policy       Policy   @relation(fields: [policyId], references: [id])
-  policyId     String   @unique
+  policy       Policy    @relation(fields: [policyId], references: [id])
+  policyId     String    @unique
   lossAmount   String
   payoutAmount String
   txHash       String?
-  status       String   @default("PENDING") // PENDING, SUBMITTED, PAID, FAILED
-  createdAt    DateTime @default(now())
+  status       String    @default("PENDING")
+  createdAt    DateTime  @default(now())
   paidAt       DateTime?
+
+  @@index([userAddress])
+  @@index([status])
+}
+
+model ErrorLog {
+  id          String   @id @default(uuid())
+  userAddress String?
+  errorType   String
+  message     String
+  stack       String?
+  createdAt   DateTime @default(now())
+
+  @@index([errorType])
+  @@index([createdAt])
+}
+
+model PoolSnapshot {
+  id             String   @id @default(uuid())
+  poolBalance    String
+  totalPremiums  String
+  totalClaims    String
+  activePolicies Int
+  timestamp      DateTime @default(now())
 }
