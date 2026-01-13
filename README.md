@@ -2,7 +2,7 @@
 
 **Permissionless liquidation insurance protocol for decentralized perpetual traders.**
 
-**Quick Links:** [Live Demo (Vercel)](https://safekeeper-eight.vercel.app) | [Backend API (Render)](https://safekeeper.onrender.com) | [Shardeum Contracts](#shardeum-deployed-addresses) | [ThinkRoot Demo](https://safekeeper-insurance-q7ttjs.thinkroot.app) | [INCO Submissions](#inco-network-submission)
+**Quick Links:** [📺 Demo Video](https://youtu.be/_ngquS9SK_k) | [Live Demo (Vercel)](https://safekeeper-eight.vercel.app) | [Backend API (Render)](https://safekeeper.onrender.com) | [Shardeum Contracts](#shardeum-deployed-addresses) | [ThinkRoot Demo](https://safekeeper-insurance-q7ttjs.thinkroot.app) | [INCO Submissions](#inco-network-submission)
 
 ---
 
