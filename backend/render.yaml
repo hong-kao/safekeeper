@@ -1,0 +1,29 @@
+services:
+  - type: web
+    name: safekeeper-backend
+    env: node
+    buildCommand: npm install && npx prisma generate
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: TENDERLY_RPC_URL
+        sync: false
+      - key: TENDERLY_CHAIN_ID
+        sync: false
+      - key: DEPLOYER_PRIVATE_KEY
+        sync: false
+      - key: INSURANCE_POOL_ADDRESS
+        sync: false
+      - key: PRICING_ADDRESS
+        sync: false
+      - key: POLICY_REGISTRY_ADDRESS
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: MOCK_HYPERLIQUID
+        value: "true"
+      - key: MOCK_WEB3
+        value: "false"
