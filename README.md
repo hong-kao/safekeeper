@@ -24,21 +24,19 @@ Traders pay a small premium to insure their positions. If liquidated, the smart 
 
 ### Landing Page
 
-![Hero Section](frontend/public/docs/pic1.png)
-
-![Features Section](frontend/public/docs/pic2.png)
-
-![Call to Action](frontend/public/docs/pic3.png)
+| | | |
+|:--:|:--:|:--:|
+| <img src="frontend/public/docs/pic1.png" width="280"> | <img src="frontend/public/docs/pic2.png" width="280"> | <img src="frontend/public/docs/pic3.png" width="280"> |
+| Hero Section | Features Section | Call to Action |
 
 ### Dashboard
 
-![Market Tab](frontend/public/docs/pic4.png)
-
-![Liquidity Tab](frontend/public/docs/pic5.png)
-
-![Insurance Tab](frontend/public/docs/pic6.png)
-
-![Profile Tab](frontend/public/docs/pic7.png)
+| | |
+|:--:|:--:|
+| <img src="frontend/public/docs/pic4.png" width="400"> | <img src="frontend/public/docs/pic5.png" width="400"> |
+| Market Tab | Liquidity Tab |
+| <img src="frontend/public/docs/pic6.png" width="400"> | <img src="frontend/public/docs/pic7.png" width="400"> |
+| Insurance Tab | Profile Tab |
 
 ---
 
