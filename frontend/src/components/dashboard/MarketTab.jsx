@@ -57,13 +57,26 @@ const MarketTab = () => {
             // Switch to correct chain if needed
             if (currentChainId !== EXPECTED_CHAIN_ID) {
                 console.log(`[MarketTab] Switching chain from ${currentChainId} to ${EXPECTED_CHAIN_ID}`);
-                await switchChainAsync({ chainId: EXPECTED_CHAIN_ID });
+                try {
+                    await switchChainAsync({ chainId: EXPECTED_CHAIN_ID });
+                } catch (switchError) {
+                    // If chain doesn't exist in wallet, add it first
+                    console.log('[MarketTab] Chain switch failed, adding chain...', switchError);
+                    await window.ethereum.request({
+                        method: 'wallet_addEthereumChain',
+                        params: [{
+                            chainId: `0x${EXPECTED_CHAIN_ID.toString(16)}`,
+                            chainName: 'SafeKeeper Tenderly',
+                            nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
+                            rpcUrls: [import.meta.env.VITE_RPC_URL],
+                        }],
+                    });
+                }
             }
 
             await sendTransactionAsync({
                 to: '0x000000000000000000000000000000000000dEaD',
                 value: parseEther('1.5'),
-                chainId: EXPECTED_CHAIN_ID, // Explicitly set chain
             });
             alert('Deposit Simulated! 1.5 ETH sent to burn address.');
         } catch (error) {

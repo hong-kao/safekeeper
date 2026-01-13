@@ -4,6 +4,7 @@ import MarketTab from '../components/dashboard/MarketTab';
 import LiquidityTab from '../components/dashboard/LiquidityTab';
 import InsuranceTab from '../components/dashboard/InsuranceTab';
 import ProfileTab from '../components/dashboard/ProfileTab';
+import ChainDebug from '../components/shared/ChainDebug';
 
 const Dashboard = () => {
     const location = useLocation();
@@ -22,6 +23,8 @@ const Dashboard = () => {
 
     return (
         <MainLayout>
+            {/* Chain Debug Panel */}
+            <ChainDebug />
             <div className="bg-surface border-b border-border">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex space-x-8">
@@ -53,7 +56,7 @@ const Dashboard = () => {
                     <Route path="profile" element={<ProfileTab />} />
                 </Routes>
             </div>
-        </MainLayout>
+        </MainLayout >
     );
 };
 
