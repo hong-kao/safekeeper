@@ -8,12 +8,14 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(uuid())
-  address   String   @unique
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  policies  Policy[]
-  claims    Claim[]
+  id            String        @id @default(uuid())
+  address       String        @unique
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  policies      Policy[]
+  claims        Claim[]
+  lpDeposits    LpDeposit[]
+  lpWithdrawals LpWithdraw[]
 
   @@index([address])
 }
@@ -72,4 +74,30 @@ model PoolSnapshot {
   totalClaims    String
   activePolicies Int
   timestamp      DateTime @default(now())
+}
+
+model LpDeposit {
+  id            String   @id @default(uuid())
+  user          User     @relation(fields: [userAddress], references: [address])
+  userAddress   String
+  amount        String   // ETH deposited (in wei)
+  sharesIssued  String   // LP shares minted
+  ethPriceUsd   String   // ETH/USD price at deposit time (for display)
+  txHash        String   @unique
+  createdAt     DateTime @default(now())
+
+  @@index([userAddress])
+}
+
+model LpWithdraw {
+  id            String   @id @default(uuid())
+  user          User     @relation(fields: [userAddress], references: [address])
+  userAddress   String
+  sharesBurned  String   // LP shares redeemed
+  amountPaid    String   // ETH returned (principal + yield)
+  ethPriceUsd   String   // ETH/USD price at withdraw time
+  txHash        String   @unique
+  createdAt     DateTime @default(now())
+
+  @@index([userAddress])
 }
