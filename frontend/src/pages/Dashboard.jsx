@@ -23,8 +23,8 @@ const Dashboard = () => {
 
     return (
         <MainLayout>
-            {/* Chain Debug Panel */}
-            <ChainDebug />
+            {/* Chain Debug Panel - Hidden for now */}
+            {/* <ChainDebug /> */}
             <div className="bg-surface border-b border-border">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex space-x-8">

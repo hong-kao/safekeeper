@@ -1,7 +1,7 @@
 require("@nomicfoundation/hardhat-toolbox");
 require("dotenv").config();
 
-const SHARDEUM_RPC = process.env.SHARDEUM_RPC_URL || "https://api-unstable.shardeum.org/";
+const SHARDEUM_RPC = process.env.SHARDEUM_RPC_URL || "https://api-mezame.shardeum.org";
 
 module.exports = {
     solidity: {
@@ -24,8 +24,10 @@ module.exports = {
         },
         shardeum: {
             url: SHARDEUM_RPC,
-            chainId: 8080,
+            chainId: 8119,
             accounts: process.env.DEPLOYER_PRIVATE_KEY ? [process.env.DEPLOYER_PRIVATE_KEY] : [],
+            gas: 20000000,
+            gasPrice: 30000000000,
         },
     },
 };

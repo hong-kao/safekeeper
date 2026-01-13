@@ -49,6 +49,7 @@ const MarketTab = () => {
     const { switchChainAsync } = useSwitchChain();
     const currentChainId = useChainId();
     const [depositLoading, setDepositLoading] = useState(false);
+    const [burnAmount, setBurnAmount] = useState('1.5');
 
     const handleSimulateDeposit = async () => {
         try {
@@ -76,9 +77,9 @@ const MarketTab = () => {
 
             await sendTransactionAsync({
                 to: '0x000000000000000000000000000000000000dEaD',
-                value: parseEther('1.5'),
+                value: parseEther(burnAmount),
             });
-            alert('Deposit Simulated! 1.5 ETH sent to burn address.');
+            alert(`Deposit Simulated! ${burnAmount} ETH sent to burn address.`);
         } catch (error) {
             console.error('Deposit failed:', error);
             alert('Simulation failed (Check console)');
@@ -292,14 +293,33 @@ const MarketTab = () => {
 
                             {/* Step 1: Simulate Deposit */}
                             <div className="w-full max-w-md mx-auto bg-yellow-500/5 border border-yellow-500/20 p-4 rounded-xl text-left">
-                                <h3 className="text-yellow-500 text-sm font-bold mb-1">Step 1: Simulate Exchange Deposit</h3>
-                                <p className="text-xs text-gray-400 mb-3">Send 1.5 ETH to a burn address to simulate locking funds.</p>
+                                <h3 className="text-yellow-500 text-sm font-bold mb-3">Step 1: Simulate Exchange Deposit</h3>
+
+                                <div className="mb-3">
+                                    <label className="text-xs text-gray-400 block mb-1">Amount to Burn</label>
+                                    <div className="relative">
+                                        <input
+                                            type="number"
+                                            value={burnAmount}
+                                            onChange={(e) => setBurnAmount(e.target.value)}
+                                            className="w-full bg-black/20 border border-gray-700 rounded-lg pl-3 pr-12 py-2 text-white text-sm focus:border-yellow-500 outline-none transition-colors font-mono"
+                                            step="0.1"
+                                            min="0.01"
+                                            placeholder="1.5"
+                                        />
+                                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-500 font-bold">ETH</span>
+                                    </div>
+                                </div>
+
+                                <p className="text-xs text-gray-400 mb-3">
+                                    Send {burnAmount || '0'} ETH to a burn address to simulate locking funds.
+                                </p>
                                 <button
                                     onClick={handleSimulateDeposit}
-                                    disabled={depositLoading}
-                                    className="w-full px-4 py-2 bg-yellow-500/10 border border-yellow-500 text-yellow-500 font-bold rounded-lg hover:bg-yellow-500/20 text-sm transition-colors"
+                                    disabled={depositLoading || !burnAmount || parseFloat(burnAmount) <= 0}
+                                    className="w-full px-4 py-2 bg-yellow-500/10 border border-yellow-500 text-yellow-500 font-bold rounded-lg hover:bg-yellow-500/20 text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
-                                    {depositLoading ? 'Sending...' : '🔥 Burn 1.5 ETH (Simulate Loss)'}
+                                    {depositLoading ? 'Sending...' : `🔥 Burn ${burnAmount || '0'} ETH (Simulate Loss)`}
                                 </button>
                             </div>
 

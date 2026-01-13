@@ -1,189 +1,324 @@
 # SafeKeeper
 
-**Trust-less liquidation insurance protocol on Hyperliquid using ZK proofs and machine learning for dynamic premium pricing**
+**Permissionless liquidation insurance protocol for decentralized perpetual traders.**
 
 ---
 
-## The Problem
+## What is SafeKeeper
 
-**October 2025: Over $10 billion liquidated on Hyperliquid in a single cascade event.**
+SafeKeeper is an on-chain insurance protocol that protects leveraged traders from liquidation losses. Unlike traditional insurance protocols that cover smart contract risks (hacks, exploits), SafeKeeper covers market risk - when volatile price movements force-close your position.
 
-When markets move violently, leveraged traders get liquidated—their positions are forcibly closed, and they lose everything. There's zero recovery mechanism. You watch your account go to $0 in seconds.
-
-### The Current Gap
-
-- **Existing insurance protocols** (Nexus Mutual, InsurAce) only cover **smart contract failures**—bugs, hacks, exploits
-- **Nobody covers liquidation risk**—the market moving against your position
-- These are fundamentally different problems:
-  - Smart contract risk = "Did the code break?"
-  - Liquidation risk = "Did the market wreck me?"
-
-**Traders using high leverage on decentralized perpetuals have zero protection against liquidation.**
-
----
-
-## Our Solution
-
-**SafeKeeper** is a permissionless insurance protocol that protects traders from liquidation losses.
+Traders pay a small premium to insure their positions. If liquidated, the smart contract automatically pays back a percentage of the loss. No claims to file, no waiting period - instant, trustless payouts verified on-chain.
 
 ### How It Works
 
-1. **Buy Insurance**: Traders pay a small dynamic premium (0.5-3% of position size) to insure their leveraged positions
-2. **Get Liquidated**: Market moves against you, and your position gets liquidated on Hyperliquid
-3. **Instant Payout**: Smart contract automatically pays you 50-80% of your loss back—verified cryptographically via ZK proofs
-4. **No Trust Required**: Liquidations are verified on-chain using zero-knowledge proofs, not by a centralized backend
-
-### Example
-
-- You have a $50,000 position with 10x leverage on Hyperliquid
-- You pay a $500 insurance premium (1% of position size)
-- Market crashes. You get liquidated and lose $50,000
-- **SafeKeeper instantly pays you $30,000 back** (60% coverage)
-- **Net loss: $20,500** instead of $50,000
+1. **Connect Wallet** - Connect your wallet to the SafeKeeper dApp
+2. **Buy Insurance** - Select your position size, leverage, and pay the calculated premium
+3. **Trade Normally** - Open your leveraged position on Hyperliquid
+4. **Get Protected** - If liquidated, SafeKeeper automatically detects and pays out 50% of your loss
+5. **Claim Received** - Funds are sent directly to your wallet, no manual claims needed
 
 ---
 
-## Core Features
+## Screenshots
 
-### 1. Smart Contract Insurance Pool
-- Permissionless liquidity pools where anyone can become an LP and earn yield from insurance premiums
-- Instant, atomic claim payouts when liquidations are verified on-chain
-- Self-correcting economics: Pool automatically adjusts premiums up when capital is low, down when abundant
+### Landing Page
 
-### 2. ZK Oracle Integration
-- **Trustless liquidation verification** without backend intermediaries
-- Smart contract verifies zero-knowledge proofs cryptographically before paying claims
-- No centralized party can lie about whether a liquidation occurred—it's mathematically proven on-chain
+![Hero Section](frontend/public/docs/pic1.png)
 
-### 3. Dynamic Premium Calculator
-- Machine learning model trained on October 2025 liquidation data
-- Premiums adapt to real-time market conditions:
-  - High volatility → Higher premiums
-  - High leverage → Higher premiums
-  - Stressed insurance pool → Higher premiums
-  - Healthy account → Lower premiums
-- Captures non-linear relationships that static formulas miss
+![Features Section](frontend/public/docs/pic2.png)
 
-### 4. Real-Time Liquidation Listener
-- WebSocket integration with Hyperliquid API for sub-second liquidation detection
-- Automatic claim triggering when an insured account gets liquidated
-- No manual claim filing—everything happens automatically
+![Call to Action](frontend/public/docs/pic3.png)
 
-### 5. Live Liquidation Risk Simulator
-- Real-time health factor tracking shows traders exactly how close they are to liquidation
-- Second-by-second updates based on current positions and market prices
-- Payout preview: "If you're liquidated RIGHT NOW, SafeKeeper pays you $X back"
+### Dashboard
+
+![Market Tab](frontend/public/docs/pic4.png)
+
+![Liquidity Tab](frontend/public/docs/pic5.png)
+
+![Insurance Tab](frontend/public/docs/pic6.png)
+
+![Profile Tab](frontend/public/docs/pic7.png)
 
 ---
 
-## Architecture (Tentative Architecture - Not Finalized)
+## Why SafeKeeper
+
+### The Problem
+
+October 2025: Over $10 billion liquidated on Hyperliquid in a single cascade event. Traders using high leverage watched their accounts go to zero in seconds with no recovery mechanism.
+
+Existing insurance protocols (Nexus Mutual, InsurAce) only cover smart contract failures. Nobody covers the liquidation risk from market volatility.
+
+### The Gap in the Market
+
+| Insurance Type | What It Covers | Examples |
+|----------------|----------------|----------|
+| Smart Contract Insurance | Hacks, exploits, bugs | Nexus Mutual, InsurAce |
+| **Liquidation Insurance** | Market volatility, forced closures | **SafeKeeper** |
+
+These are fundamentally different problems - like how car insurance and health insurance are both "insurance" but solve different problems.
+
+### Who Is It For
+
+- **Leveraged Traders**: Protect your perpetual positions from sudden price drops
+- **Liquidity Providers**: Earn yield by providing capital to the insurance pool
+- **DeFi Protocols**: Integrate SafeKeeper to offer insurance as a feature
+
+### Reference: October 2025 Cascade
+
+This is not a theoretical problem. The October liquidation cascade on Hyperliquid proved the demand - traders lost everything with no protection available. SafeKeeper exists because of this event.
+
+---
+
+## Architecture
+
 ```mermaid
 graph TB
-    subgraph Frontend
-        UI[React UI<br/>Risk Monitor & Insurance Purchase]
+    subgraph Frontend["Frontend (React)"]
+        UI[Dashboard UI]
+        Hooks[Web3 Hooks]
     end
     
-    subgraph Smart Contracts
-        Pool[Insurance Pool Contract]
-        Premium[Premium Calculator]
-        Claims[Claim Processor]
+    subgraph Backend["Backend (Node.js)"]
+        API[Express API]
+        WS[WebSocket Server]
+        Monitor[Liquidation Monitor]
+        Claims[Claim Submitter]
     end
     
-    subgraph Backend
-        WS[WebSocket Listener<br/>Hyperliquid Events]
-        ZK[ZK Oracle Verifier]
-        ML[ML Premium Engine<br/>Python API]
+    subgraph Contracts["Smart Contracts (Solidity)"]
+        Pool[InsurancePool.sol]
+        Registry[PolicyRegistry.sol]
+        Pricing[Pricing.sol]
     end
     
-    subgraph External
-        HL[Hyperliquid API<br/>Liquidation Events]
+    subgraph External["External"]
+        HL[Hyperliquid API]
+        DB[(PostgreSQL)]
     end
     
-    UI -->|Buy Insurance| Pool
-    UI -->|Get Premium Quote| Premium
-    UI -->|Real-time Updates| WS
+    UI --> Hooks
+    Hooks --> Pool
+    Hooks --> API
     
-    WS -->|Listen| HL
-    WS -->|Liquidation Detected| ZK
-    ZK -->|Submit Proof| Claims
-    Claims -->|Verify & Payout| Pool
+    API --> DB
+    API --> Pool
     
-    ML -->|Dynamic Pricing| Premium
-    Premium -->|Calculate Premium| UI
+    WS --> Monitor
+    Monitor --> HL
+    Monitor --> Claims
+    Claims --> Pool
+    
+    Pool --> Registry
+    Pool --> Pricing
 ```
 
 ### Data Flow
 
 **Insurance Purchase:**
-- Trader inputs position details (size, leverage, asset)
-- ML engine calculates premium based on volatility and pool stress
-- Smart contract locks premium in insurance pool
+1. User selects position size and leverage on the frontend
+2. Frontend queries Pricing contract to calculate premium
+3. User signs transaction and pays premium in ETH
+4. InsurancePool receives payment and creates policy via PolicyRegistry
+5. Policy is stored on-chain with position details and coverage terms
 
 **Liquidation Detection:**
-- WebSocket listener monitors Hyperliquid for liquidation events
-- When insured account liquidates, backend generates ZK proof
-- Proof submitted to smart contract
+1. Backend runs a liquidation monitor job every few seconds
+2. Monitor fetches current market prices from Hyperliquid API
+3. Compares prices against insured positions' liquidation thresholds
+4. When a position is liquidated, backend detects via position state check
+5. Claim submitter is triggered automatically
 
 **Claim Payout:**
-- Smart contract verifies ZK proof cryptographically
-- If valid, automatic payout to trader (50-80% of loss)
-- Pool balance updates, premium recalculation triggered
+1. Claim submitter calls InsurancePool.submitClaim() with policy details
+2. InsurancePool verifies policy exists and is active via PolicyRegistry
+3. Calculates payout amount (50% of position size by default)
+4. Transfers ETH directly to trader's wallet
+5. Marks policy as claimed in PolicyRegistry
+
+---
+
+## Key Files
+
+### InsurancePool.sol
+
+The core contract managing the insurance pool. This is the main entry point for all insurance operations.
+
+**Responsibilities:**
+- Premium collection and policy creation
+- Claim processing and payouts
+- LP deposits and withdrawals with yield accrual
+- Pool administration (pause, emergency withdraw)
+
+**Key Functions:**
+
+| Function | Description |
+|----------|-------------|
+| `buyInsurance()` | Purchase a policy by paying premium |
+| `submitClaim()` | Admin triggers payout for liquidated position |
+| `deposit()` | LP deposits ETH and receives shares |
+| `withdraw()` | LP redeems shares for ETH + interest |
+| `getPoolStatus()` | Returns pool balance, premiums, claims stats |
+
+### PolicyRegistry.sol
+
+Manages the lifecycle of insurance policies. Supports multiple policies per user.
+
+**Key Functions:**
+
+| Function | Description |
+|----------|-------------|
+| `createPolicy()` | Create new policy with position details |
+| `markClaimed()` | Mark policy as claimed after payout |
+| `getActivePolicies()` | Get all unclaimed policies for a user |
+| `hasPolicy()` | Check if user has any active policy |
+
+### hyperliquidService.js
+
+Backend service for monitoring Hyperliquid positions. The brain of liquidation detection.
+
+**Features:**
+- Real-time position monitoring via Hyperliquid API
+- Mock mode for demo/testing with simulated price movements
+- Liquidation detection comparing current price vs liquidation price
+- Account state, order, and fill fetching
+- Supports both live Hyperliquid API and local mock mode
+
+---
+
+## Shardeum Deployed Addresses
+
+| Contract | Address | Status |
+|----------|---------|--------|
+| Pricing | `0x07b09b71F9274d18D5dAe624E4021b23090D040A` | Deployed |
+| InsurancePool | - | Pending (insufficient testnet tokens) |
+| PolicyRegistry | - | Pending (insufficient testnet tokens) |
+
+Note: InsurancePool and PolicyRegistry deployment pending due to lack of Shardeum testnet tokens. PolicyRegistry is deployed automatically when InsurancePool is deployed.
+
+---
+
+## File Structure
+
+```
+safe-keeper/
+├── backend/
+│   ├── src/
+│   │   ├── config/         # Viem client, contract ABIs
+│   │   ├── jobs/           # Liquidation monitor cron
+│   │   ├── routes/         # API endpoints (insurance, claims, pool, auth)
+│   │   ├── services/       # Hyperliquid service, claim submitter
+│   │   ├── websocket/      # Real-time WebSocket server
+│   │   └── index.js        # Express server entry point
+│   ├── prisma/             # Database schema and migrations
+│   └── tests/              # Backend tests
+│
+├── frontend/
+│   ├── src/
+│   │   ├── components/     # React UI components (dashboard, shared, layout)
+│   │   ├── hooks/          # Web3 hooks (useInsurance, useLiquidity, usePool)
+│   │   ├── pages/          # Page components (Landing, Dashboard)
+│   │   └── services/       # API client services
+│   ├── public/             # Static assets and images
+│   └── index.html          # Entry HTML
+│
+├── web3/
+│   ├── contracts/          # Solidity smart contracts
+│   │   ├── InsurancePool.sol   # Core insurance pool logic
+│   │   ├── PolicyRegistry.sol  # Policy management
+│   │   └── Pricing.sol         # Premium calculation
+│   ├── scripts/            # Deployment and utility scripts
+│   └── test/               # Contract unit tests
+│
+├── scripts/                # Project-level scripts
+└── README.md
+```
 
 ---
 
 ## Tech Stack
 
 ### Frontend
-- React with TypeScript
-- Ethers.js / Wagmi for Web3 interactions
-- Tailwind CSS for styling
-- WebSocket client for real-time updates
+- **React 18** with Vite for fast development
+- **Wagmi v2** + **Viem** for Web3 wallet connections and contract interactions
+- **TailwindCSS** for styling
+- **React Router** for navigation
 
 ### Backend
-- Node.js with Express and TypeScript
-- WebSocket server for Hyperliquid integration
-- Redis for caching liquidation events and pool state
-- PostgreSQL for historical data and analytics
+- **Node.js** with **Express.js** for REST API
+- **Prisma ORM** with **PostgreSQL** for data persistence
+- **WebSocket** for real-time price and policy updates
+- **Viem** for blockchain interactions
 
 ### Smart Contracts
-- Solidity for all on-chain logic
-- Hardhat for development and testing
-- Chainlink oracles for price feeds
-- ZK Oracle integration for trustless liquidation verification
+- **Solidity 0.8.20** for contract development
+- **Hardhat** for compilation, testing, and deployment
+- **OpenZeppelin** patterns for security best practices
 
-### Machine Learning
-- Python with FastAPI for ML model serving
-- Trained on October 2025 liquidation cascade data
-- Features: volatility, leverage, health factor, pool utilization
-- Fallback to rule-based pricing if ML fails
+### Infrastructure
+- PostgreSQL database for policy and user data
+- WebSocket server for real-time frontend updates
+- Hardhat local node for development testing
+
+### Future: ZK Verification
+
+We are in the process of implementing ZK (Zero-Knowledge) proofs for making the backend verifiable. This will enable trustless liquidation verification without relying on a centralized backend oracle. The goal is to generate ZK proofs of Hyperliquid liquidation events that can be verified on-chain before payouts.
 
 ---
 
-## Why SafeKeeper is Unique
+## Getting Started
 
-### 1. First Liquidation Insurance on Hyperliquid
-Existing solutions (Nexus Mutual, InsurAce) cover smart contract risk (hacks, exploits). SafeKeeper covers **market risk** (liquidations from volatility). These are fundamentally different categories—like how car insurance and health insurance are both "insurance" but solve different problems.
+### Prerequisites
+- Node.js 18+
+- PostgreSQL
+- MetaMask or compatible Web3 wallet
 
-### 2. Trustless with ZK Verification
-Liquidations are verified cryptographically on-chain using zero-knowledge proofs. No centralized backend can lie about liquidation events. The smart contract verifies the proof mathematically before paying out.
+### Installation
 
-### 3. Dynamic ML-Based Pricing
-Static formulas can't capture the chaos of crypto markets. Our ML model learned from October 2025's $10B liquidation cascade and adapts premiums in real-time based on market volatility, position leverage, account health factor, and insurance pool stress.
+```bash
+# Clone the repository
+git clone https://github.com/team-baked/safe-keeper.git
+cd safe-keeper
 
-### 4. Self-Correcting Economics
-The insurance pool automatically adjusts premiums without manual governance. Pool draining means premiums increase and more LPs are attracted. Pool overfunded means premiums decrease and more traders buy insurance. Elegant algorithmic incentives, no human intervention needed.
+# Install dependencies
+cd backend && npm install
+cd ../frontend && npm install
+cd ../web3 && npm install
 
-### 5. Proof of Demand: October 2025
-This isn't a theoretical problem. Two months ago, $10B+ was liquidated on Hyperliquid in a single cascade. Traders lost everything. SafeKeeper solves a problem **everyone just experienced**.
+# Set up environment variables
+cp backend/.env.example backend/.env
+cp frontend/.env.example frontend/.env
+cp web3/.env.example web3/.env
+
+# Run database migrations
+cd backend && npx prisma migrate dev
+
+# Start local blockchain
+cd web3 && npx hardhat node
+
+# Deploy contracts (in another terminal)
+cd web3 && npx hardhat run scripts/deploy.js --network localhost
+
+# Start backend server
+cd backend && npm run dev
+
+# Start frontend
+cd frontend && npm run dev
+```
+
+---
+
+## Business Pitch
+
+[View Full Pitch Deck on Canva](https://www.canva.com/design/DAG-Qb2EUWE/zJ06pKnbBwdbzuuWDJ8Nzw/edit?utm_content=DAG-Qb2EUWE&utm_campaign=designshare&utm_medium=link2&utm_source=sharebutton)
 
 ---
 
 ## License
 
-MIT License - see LICENSE file for details
+MIT License
 
 ---
 
-Built by Team Baked
-
-
+Built by Team Baked.
