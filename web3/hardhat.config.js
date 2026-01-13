@@ -26,8 +26,6 @@ module.exports = {
             url: SHARDEUM_RPC,
             chainId: 8119,
             accounts: process.env.DEPLOYER_PRIVATE_KEY ? [process.env.DEPLOYER_PRIVATE_KEY] : [],
-            gas: 20000000,
-            gasPrice: 30000000000,
         },
     },
 };

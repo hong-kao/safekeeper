@@ -190,10 +190,10 @@ Backend service for monitoring Hyperliquid positions. The brain of liquidation d
 | Contract | Address | Status |
 |----------|---------|--------|
 | Pricing | `0x07b09b71F9274d18D5dAe624E4021b23090D040A` | Deployed |
-| InsurancePool | - | Pending (insufficient testnet tokens) |
-| PolicyRegistry | - | Pending (insufficient testnet tokens) |
+| InsurancePool | `0x03761c03b47001daF26Fdd4FF2eb0B777a60bD04` | Deployed |
+| PolicyRegistry | `0x6810C564290e7Eea9Cf93E9e6C26070e1Ab17C51` | Deployed |
 
-Note: InsurancePool and PolicyRegistry deployment pending due to lack of Shardeum testnet tokens. PolicyRegistry is deployed automatically when InsurancePool is deployed.
+All contracts deployed on Shardeum Mezame Testnet (Chain ID: 8119).
 
 ---
 
