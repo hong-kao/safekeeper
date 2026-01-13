@@ -319,12 +319,13 @@ MIT License
 
 ---
 
-### Inco Submissions
+## Inco Submissions
 
-## D-App 
+### D-App 
 https://github.com/sxdxde/PayPool-Defy-26-
 
-## Game 
+### Game 
 https://github.com/sxdxde/Heist-Auction-Defy-26-
 
+---
 Built by Team Baked.
