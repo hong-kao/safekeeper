@@ -2,6 +2,8 @@
 
 **Permissionless liquidation insurance protocol for decentralized perpetual traders.**
 
+**Quick Links:** [Shardeum Contracts](#shardeum-deployed-addresses) | [ThinkRoot Demo](https://safekeeper-insurance-q7ttjs.thinkroot.app) | [INCO Submissions](#inco-network-submission)
+
 ---
 
 ## What is SafeKeeper
@@ -194,6 +196,24 @@ Backend service for monitoring Hyperliquid positions. The brain of liquidation d
 | PolicyRegistry | `0x6810C564290e7Eea9Cf93E9e6C26070e1Ab17C51` | Deployed |
 
 All contracts deployed on Shardeum Mezame Testnet (Chain ID: 8119).
+
+---
+
+## ThinkRoot Deployment
+
+We replicated our local application on ThinkRoot infrastructure for the ThinkRoot track.
+
+**Live Demo:** [https://safekeeper-insurance-q7ttjs.thinkroot.app](https://safekeeper-insurance-q7ttjs.thinkroot.app)
+
+---
+
+## INCO Network Submission
+
+| Link | Description |
+|------|-------------|
+| `TBD` | Submission 1 |
+| `TBD` | Submission 2 |
+| `TBD` | Submission 3 |
 
 ---
 
