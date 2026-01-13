@@ -188,8 +188,8 @@ const LandingPage = () => {
                                 <div className="space-y-6 font-mono text-sm">
                                     <div className="p-4 bg-white/5 rounded-xl border border-white/5">
                                         <div className="text-gray-400 mb-2">Monitor</div>
-                                        <div className="text-primary">> Listening to Hyperliquid WS...</div>
-                                        <div className="text-primary">> Tracking 10x ETH Long Position</div>
+                                        <div className="text-primary">&gt; Listening to Hyperliquid WS...</div>
+                                        <div className="text-primary">&gt; Tracking 10x ETH Long Position</div>
                                     </div>
 
                                     <div className="flex justify-center">
@@ -198,8 +198,8 @@ const LandingPage = () => {
 
                                     <div className="p-4 bg-white/5 rounded-xl border border-white/5">
                                         <div className="text-gray-400 mb-2">Detect</div>
-                                        <div className="text-error">> LIQUIDATION DETECTED @ $2850</div>
-                                        <div className="text-gray-300">> Verifying On-chain...</div>
+                                        <div className="text-error">&gt; LIQUIDATION DETECTED @ $2850</div>
+                                        <div className="text-gray-300">&gt; Verifying On-chain...</div>
                                     </div>
 
                                     <div className="flex justify-center">

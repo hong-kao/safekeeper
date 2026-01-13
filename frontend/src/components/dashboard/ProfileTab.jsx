@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { useInsurance } from '../../hooks/useInsurance';
+import { useBalance } from 'wagmi';
 import { Shield, History, CheckCircle, Clock, ExternalLink, Wallet } from 'lucide-react';
 import Loader from '../shared/Loader';
 import { formatEther } from 'viem';
@@ -12,6 +13,16 @@ const formatWei = (wei) => {
     } catch {
         return '0.0000';
     }
+};
+
+// Helper to format large numbers
+const formatLargeNumber = (val) => {
+    if (!val) return '0';
+    const num = parseFloat(val);
+    if (num >= 1_000_000_000) return (num / 1_000_000_000).toFixed(2) + 'B';
+    if (num >= 1_000_000) return (num / 1_000_000).toFixed(2) + 'M';
+    if (num >= 1_000) return (num / 1_000).toFixed(2) + 'K';
+    return num.toFixed(4);
 };
 
 // Helper to format date
@@ -29,30 +40,52 @@ const formatDate = (dateStr) => {
 const ProfileTab = () => {
     const { address } = useAuth();
     const { getPolicies } = useInsurance(address);
+    const { data: balanceData } = useBalance({ address });
 
     const [policies, setPolicies] = useState([]);
+    const [claims, setClaims] = useState([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const fetchPolicies = async () => {
+        const fetchData = async () => {
             if (address) {
-                console.log('[ProfileTab] Fetching policies...');
-                const data = await getPolicies();
-                console.log('[ProfileTab] Policies:', data);
-                setPolicies(Array.isArray(data) ? data : []);
+                console.log('[ProfileTab] Fetching policies and claims...');
+
+                // Fetch policies
+                const policyData = await getPolicies();
+                console.log('[ProfileTab] Policies:', policyData);
+                setPolicies(Array.isArray(policyData) ? policyData : []);
+
+                // Fetch claims from backend API
+                try {
+                    const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/claims/user/${address}`);
+                    if (res.ok) {
+                        const claimsData = await res.json();
+                        console.log('[ProfileTab] Claims:', claimsData);
+                        setClaims(Array.isArray(claimsData) ? claimsData : []);
+                    }
+                } catch (err) {
+                    console.error('[ProfileTab] Failed to fetch claims:', err);
+                }
+
                 setLoading(false);
             }
         };
-        fetchPolicies();
+        fetchData();
 
         // Auto-refresh every 5 seconds to catch liquidation status changes
-        const interval = setInterval(fetchPolicies, 5000);
+        const interval = setInterval(fetchData, 5000);
         return () => clearInterval(interval);
     }, [address, getPolicies]);
 
     // Separate policies by status
-    const activePolicies = policies.filter(p => p.status === 'ACTIVE');
-    const pastPolicies = policies.filter(p => p.status !== 'ACTIVE');
+    // User requested: Ongoing claims should be in 'Ongoing' (Active) section
+    const activePolicies = policies.filter(p => p.status === 'ACTIVE' || p.status === 'PENDING');
+    const pastPolicies = policies.filter(p => p.status === 'CLAIMED' || p.status === 'PAID' || p.status === 'EXPIRED');
+
+    // Separate claims by status
+    const pendingClaims = claims.filter(c => c.status === 'PENDING');
+    const paidClaims = claims.filter(c => c.status === 'PAID');
 
     if (loading) {
         return (
@@ -78,6 +111,12 @@ const ProfileTab = () => {
                     </div>
                 </div>
                 <div className="flex gap-6 text-center">
+                    <div className="px-6 py-2 bg-background rounded-xl border border-border">
+                        <div className="text-2xl font-bold text-white">
+                            {formatLargeNumber(balanceData?.formatted)} <span className="text-sm text-primary">ETH</span>
+                        </div>
+                        <div className="text-xs text-gray-400">Balance</div>
+                    </div>
                     <div className="px-6 py-2 bg-background rounded-xl border border-border">
                         <div className="text-2xl font-bold text-primary">{activePolicies.length}</div>
                         <div className="text-xs text-gray-400">Active</div>
@@ -136,9 +175,18 @@ const ProfileTab = () => {
                                             <Clock className="h-4 w-4 text-gray-500" />
                                             <span className="text-xs text-gray-400">{formatDate(policy.createdAt)}</span>
                                         </div>
-                                        <div className="flex items-center gap-1 mt-2 text-success">
-                                            <div className="h-2 w-2 bg-success rounded-full animate-pulse" />
-                                            <span className="text-xs font-bold">ACTIVE</span>
+                                        <div className="flex items-center gap-1 mt-2">
+                                            {policy.status === 'ACTIVE' ? (
+                                                <>
+                                                    <div className="h-2 w-2 bg-success rounded-full animate-pulse" />
+                                                    <span className="text-xs font-bold text-success">ACTIVE</span>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <div className="h-2 w-2 bg-yellow-500 rounded-full animate-pulse" />
+                                                    <span className="text-xs font-bold text-yellow-500">PROCESSING</span>
+                                                </>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
@@ -223,6 +271,82 @@ const ProfileTab = () => {
                     </div>
                 )}
             </div>
+
+            {/* Claims History Section */}
+            {claims.length > 0 && (
+                <div className="space-y-4">
+                    <div className="flex items-center gap-2">
+                        <CheckCircle className="h-5 w-5 text-yellow-500" />
+                        <h2 className="text-lg font-bold text-white">Claims History</h2>
+                        <span className="ml-2 px-2 py-0.5 bg-yellow-500/20 text-yellow-500 text-xs rounded-full">
+                            {claims.length} Total
+                        </span>
+                    </div>
+
+                    <div className="bg-surface border border-border rounded-xl overflow-hidden">
+                        <table className="w-full text-sm">
+                            <thead className="bg-background border-b border-border">
+                                <tr>
+                                    <th className="text-left py-3 px-4 text-gray-400 font-medium">Policy</th>
+                                    <th className="text-left py-3 px-4 text-gray-400 font-medium">Status</th>
+                                    <th className="text-left py-3 px-4 text-gray-400 font-medium">Payout</th>
+                                    <th className="text-left py-3 px-4 text-gray-400 font-medium">Date</th>
+                                    <th className="text-left py-3 px-4 text-gray-400 font-medium">Tx</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {claims.map((claim) => (
+                                    <tr key={claim.id} className="border-b border-border/50 hover:bg-white/5">
+                                        <td className="py-3 px-4">
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-white font-medium">
+                                                    {claim.policy ? `${formatWei(claim.policy.positionSize)} ETH` : 'N/A'}
+                                                </span>
+                                                <span className="text-xs text-gray-500">
+                                                    {claim.policy?.leverage}x
+                                                </span>
+                                            </div>
+                                        </td>
+                                        <td className="py-3 px-4">
+                                            <span className={`px-2 py-1 rounded-lg text-xs font-medium ${claim.status === 'PAID'
+                                                ? 'bg-success/20 text-success'
+                                                : claim.status === 'PENDING'
+                                                    ? 'bg-yellow-500/20 text-yellow-500'
+                                                    : 'bg-red-500/20 text-red-500'
+                                                }`}>
+                                                {claim.status}
+                                            </span>
+                                        </td>
+                                        <td className="py-3 px-4">
+                                            <span className="text-success font-bold">
+                                                +{formatWei(claim.payoutAmount)} ETH
+                                            </span>
+                                        </td>
+                                        <td className="py-3 px-4 text-gray-400">
+                                            {formatDate(claim.createdAt)}
+                                        </td>
+                                        <td className="py-3 px-4">
+                                            {claim.txHash ? (
+                                                <a
+                                                    href={`https://sepolia.arbiscan.io/tx/${claim.txHash}`}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="text-primary hover:underline flex items-center gap-1"
+                                                >
+                                                    <span className="font-mono text-xs">{claim.txHash.slice(0, 8)}...</span>
+                                                    <ExternalLink className="h-3 w-3" />
+                                                </a>
+                                            ) : (
+                                                <span className="text-gray-500">-</span>
+                                            )}
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

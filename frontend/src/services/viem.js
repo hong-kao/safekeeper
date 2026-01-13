@@ -109,6 +109,53 @@ export const INSURANCE_POOL_ABI = [
         outputs: [{ name: '', type: 'uint256' }],
         stateMutability: 'view',
     },
+    // LP Functions
+    {
+        name: 'deposit',
+        type: 'function',
+        inputs: [],
+        outputs: [],
+        stateMutability: 'payable',
+    },
+    {
+        name: 'withdraw',
+        type: 'function',
+        inputs: [{ name: 'shares', type: 'uint256' }],
+        outputs: [],
+        stateMutability: 'nonpayable',
+    },
+    {
+        name: 'previewLpYield',
+        type: 'function',
+        inputs: [{ name: 'user', type: 'address' }],
+        outputs: [{ name: 'pendingInterest', type: 'uint256' }],
+        stateMutability: 'view',
+    },
+    {
+        name: 'getLpPosition',
+        type: 'function',
+        inputs: [{ name: 'user', type: 'address' }],
+        outputs: [
+            { name: 'shares', type: 'uint256' },
+            { name: 'underlying', type: 'uint256' },
+            { name: 'pendingInterest', type: 'uint256' },
+        ],
+        stateMutability: 'view',
+    },
+    {
+        name: 'lpAprBps',
+        type: 'function',
+        inputs: [],
+        outputs: [{ name: '', type: 'uint256' }],
+        stateMutability: 'view',
+    },
+    {
+        name: 'totalLpShares',
+        type: 'function',
+        inputs: [],
+        outputs: [{ name: '', type: 'uint256' }],
+        stateMutability: 'view',
+    },
 ];
 
 export const PRICING_ABI = [
