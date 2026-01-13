@@ -1,6 +1,8 @@
 require("@nomicfoundation/hardhat-toolbox");
 require("dotenv").config();
 
+const SHARDEUM_RPC = process.env.SHARDEUM_RPC_URL || "https://api-unstable.shardeum.org/";
+
 module.exports = {
     solidity: {
         version: "0.8.20",
@@ -18,6 +20,11 @@ module.exports = {
         tenderly: {
             url: process.env.TENDERLY_RPC_URL || "",
             chainId: parseInt(process.env.TENDERLY_CHAIN_ID || "1"),
+            accounts: process.env.DEPLOYER_PRIVATE_KEY ? [process.env.DEPLOYER_PRIVATE_KEY] : [],
+        },
+        shardeum: {
+            url: SHARDEUM_RPC,
+            chainId: 8080,
             accounts: process.env.DEPLOYER_PRIVATE_KEY ? [process.env.DEPLOYER_PRIVATE_KEY] : [],
         },
     },
