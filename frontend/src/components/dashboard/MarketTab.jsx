@@ -8,7 +8,7 @@ import Loader from '../shared/Loader';
 import GSAPLoader from '../shared/GSAPLoader';
 import { formatEthValue } from '../../utils/format';
 import { formatEther, parseEther } from 'viem';
-import { useSendTransaction } from 'wagmi';
+import { useSendTransaction, useSwitchChain, useChainId } from 'wagmi';
 
 // Helper to format Wei to ETH
 const formatWei = (wei) => {
@@ -30,6 +30,9 @@ const formatWeiToUsd = (wei) => {
     }
 };
 
+// Get expected chain ID from env
+const EXPECTED_CHAIN_ID = Number(import.meta.env.VITE_CHAIN_ID) || 73571;
+
 const MarketTab = () => {
     const { address } = useAuth();
     const { prices, isConnected: wsConnected } = useMarketData();
@@ -43,14 +46,24 @@ const MarketTab = () => {
 
     const [initialLoading, setInitialLoading] = useState(true);
     const { sendTransactionAsync } = useSendTransaction();
+    const { switchChainAsync } = useSwitchChain();
+    const currentChainId = useChainId();
     const [depositLoading, setDepositLoading] = useState(false);
 
     const handleSimulateDeposit = async () => {
         try {
             setDepositLoading(true);
+
+            // Switch to correct chain if needed
+            if (currentChainId !== EXPECTED_CHAIN_ID) {
+                console.log(`[MarketTab] Switching chain from ${currentChainId} to ${EXPECTED_CHAIN_ID}`);
+                await switchChainAsync({ chainId: EXPECTED_CHAIN_ID });
+            }
+
             await sendTransactionAsync({
                 to: '0x000000000000000000000000000000000000dEaD',
                 value: parseEther('1.5'),
+                chainId: EXPECTED_CHAIN_ID, // Explicitly set chain
             });
             alert('Deposit Simulated! 1.5 ETH sent to burn address.');
         } catch (error) {
